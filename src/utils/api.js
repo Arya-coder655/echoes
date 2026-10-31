@@ -4,7 +4,10 @@
  * Includes graceful offline fallback to localStorage.
  */
 
-const API_BASE = '/api';
+const RENDER_BACKEND_URL = 'https://echoes-9wsj.onrender.com';
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('github.io'))
+  ? `${RENDER_BACKEND_URL}/api`
+  : '/api';
 
 export async function fetchEchoesFromDb(params = {}) {
   try {
