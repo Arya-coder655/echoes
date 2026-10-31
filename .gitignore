@@ -21,8 +21,8 @@ dist-ssr
 *.db
 *.sqlite
 *.sqlite3
-data/
-backups/
+/data/
+/backups/
 
 # Editor directories and files
 .vscode/*
