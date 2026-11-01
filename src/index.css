@@ -2781,6 +2781,18 @@ button {
 .footer-quote { color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; }
 .footer-links-group { display: flex; flex-direction: column; gap: 12px; }
 .footer-heading { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); }
+.footer-accordion-header {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: default;
+  text-align: left;
+}
+.footer-accordion-icon { display: none; }
 .footer-links-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .footer-links-list button { background: transparent; border: none; color: var(--text-muted); font-size: 0.86rem; cursor: pointer; text-align: left; }
 .footer-links-list button:hover { color: #ffffff; }
@@ -3349,6 +3361,82 @@ button {
     align-items: center;
     text-align: center;
     gap: 12px;
+  }
+
+  /* Mobile Accordion Dropdowns for Footer Sections */
+  .footer-links-group.accordion-group {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    gap: 0;
+    transition: all 0.25s ease;
+    width: 100%;
+  }
+
+  .footer-links-group.accordion-group.is-open {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .footer-accordion-header {
+    cursor: pointer;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: transparent;
+    border: none;
+    user-select: none;
+    pointer-events: auto;
+  }
+
+  .footer-accordion-header .footer-heading {
+    margin: 0;
+    font-size: 0.84rem;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    color: #f1f5f9;
+  }
+
+  .footer-accordion-icon {
+    display: block;
+    color: var(--text-muted);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+  }
+
+  .accordion-group.is-open .footer-accordion-icon {
+    transform: rotate(180deg);
+    color: #fc2904;
+  }
+
+  .footer-links-list {
+    display: none;
+  }
+
+  .footer-links-list.mobile-open {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 16px 14px 16px;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .footer-links-list.mobile-open button {
+    padding: 8px 6px;
+    font-size: 0.86rem;
+    color: var(--text-secondary);
+    display: block;
+    width: 100%;
+    text-align: left;
+    border-radius: 6px;
+    transition: color 0.2s ease, background 0.2s ease;
+  }
+
+  .footer-links-list.mobile-open button:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
   }
 }
 

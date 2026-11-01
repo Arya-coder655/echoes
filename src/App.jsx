@@ -26,7 +26,7 @@ import {
   recordShareInDb,
   addCommentInDb
 } from './utils/api';
-import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info } from 'lucide-react';
+import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown } from 'lucide-react';
 
 const STORAGE_KEY_POSTS = 'echoes_of_heart_posts_v2';
 const STORAGE_KEY_BOOKMARKS = 'echoes_of_heart_bookmarks_v2';
@@ -72,6 +72,18 @@ export default function App() {
   const [reportEchoTarget, setReportEchoTarget] = useState(null);
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [footerDropdowns, setFooterDropdowns] = useState({
+    experiences: false,
+    walls: false,
+    about: false
+  });
+
+  const toggleFooterDropdown = (key) => {
+    setFooterDropdowns((prev) => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   // Fetch real echoes from MySQL database on mount & sync in real-time
   useEffect(() => {
@@ -541,9 +553,18 @@ export default function App() {
               </button>
             </div>
 
-            <div className="footer-links-group">
-              <h4 className="footer-heading">Sanctuary Experiences</h4>
-              <ul className="footer-links-list">
+            {/* Sanctuary Experiences Accordion */}
+            <div className={`footer-links-group accordion-group ${footerDropdowns.experiences ? 'is-open' : ''}`}>
+              <button
+                type="button"
+                className="footer-accordion-header"
+                onClick={() => toggleFooterDropdown('experiences')}
+                aria-expanded={footerDropdowns.experiences}
+              >
+                <h4 className="footer-heading">Sanctuary Experiences</h4>
+                <ChevronDown size={17} className="footer-accordion-icon" />
+              </button>
+              <ul className={`footer-links-list ${footerDropdowns.experiences ? 'mobile-open' : ''}`}>
                 <li><button type="button" onClick={() => setMixerOpen(true)}>Rain & Soundscape Mixer</button></li>
                 <li><button type="button" onClick={() => setZenCinemaOpen(true)}>Zen Cinema (Auto-Stream)</button></li>
                 <li><button type="button" onClick={() => setRitualOpen(true)}>The Sacred Hearth (Burn to Ash)</button></li>
@@ -551,9 +572,18 @@ export default function App() {
               </ul>
             </div>
 
-            <div className="footer-links-group">
-              <h4 className="footer-heading">Sanctuary Walls</h4>
-              <ul className="footer-links-list">
+            {/* Sanctuary Walls Accordion */}
+            <div className={`footer-links-group accordion-group ${footerDropdowns.walls ? 'is-open' : ''}`}>
+              <button
+                type="button"
+                className="footer-accordion-header"
+                onClick={() => toggleFooterDropdown('walls')}
+                aria-expanded={footerDropdowns.walls}
+              >
+                <h4 className="footer-heading">Sanctuary Walls</h4>
+                <ChevronDown size={17} className="footer-accordion-icon" />
+              </button>
+              <ul className={`footer-links-list ${footerDropdowns.walls ? 'mobile-open' : ''}`}>
                 <li><button type="button" onClick={() => { setActiveCategory('regret'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Regret Wall</button></li>
                 <li><button type="button" onClick={() => { setActiveCategory('last-words'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Last Words Archive</button></li>
                 <li><button type="button" onClick={() => { setActiveCategory('unsent'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Unsent Letters</button></li>
@@ -561,9 +591,18 @@ export default function App() {
               </ul>
             </div>
 
-            <div className="footer-links-group">
-              <h4 className="footer-heading">About Us</h4>
-              <ul className="footer-links-list">
+            {/* About Us Accordion */}
+            <div className={`footer-links-group accordion-group ${footerDropdowns.about ? 'is-open' : ''}`}>
+              <button
+                type="button"
+                className="footer-accordion-header"
+                onClick={() => toggleFooterDropdown('about')}
+                aria-expanded={footerDropdowns.about}
+              >
+                <h4 className="footer-heading">About Us</h4>
+                <ChevronDown size={17} className="footer-accordion-icon" />
+              </button>
+              <ul className={`footer-links-list ${footerDropdowns.about ? 'mobile-open' : ''}`}>
                 <li><button type="button" onClick={() => setAboutOpen(true)}>About Echoes</button></li>
                 <li><button type="button" onClick={() => setAboutOpen(true)}>Why This Space Exists</button></li>
                 <li><button type="button" onClick={() => setAboutOpen(true)}>100% Anonymous Promise</button></li>
