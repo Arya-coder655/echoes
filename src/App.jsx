@@ -16,6 +16,7 @@ import WhisperingWellModal from './components/WhisperingWellModal';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import ReportModal from './components/ReportModal';
+import confetti from 'canvas-confetti';
 import { INITIAL_ECHOES } from './data/initialEchoes';
 import { soundscape } from './utils/audio';
 import {
@@ -62,6 +63,8 @@ export default function App() {
   const [shareEcho, setShareEcho] = useState(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [beerModalOpen, setBeerModalOpen] = useState(false);
+  const [beerSadState, setBeerSadState] = useState(false);
+  const [beerSadToast, setBeerSadToast] = useState(false);
   const [mixerOpen, setMixerOpen] = useState(false);
   const [zenCinemaOpen, setZenCinemaOpen] = useState(false);
   const [ritualOpen, setRitualOpen] = useState(false);
@@ -255,6 +258,43 @@ export default function App() {
   const handleReportSubmitted = (echoId) => {
     setEchoes((prev) => prev.filter((e) => e.id !== echoId));
     showToast('Echo submitted for review and hidden from your feed.');
+  };
+
+  const handleCloseBeerModal = (didPay) => {
+    setBeerModalOpen(false);
+
+    if (didPay) {
+      showToast('Cheers! Arya raises a glass to your kindness! 🍻');
+      return;
+    }
+
+    // User checked Easter egg and closed without paying -> Minimal Sad Animation!
+    try {
+      confetti({
+        particleCount: 22,
+        angle: 270, // downwards like falling tears / rain
+        spread: 35,
+        origin: { y: 0.25, x: 0.5 },
+        colors: ['#38bdf8', '#60a5fa', '#93c5fd', '#cbd5e1'],
+        gravity: 1.6,
+        scalar: 0.7,
+        ticks: 120,
+        shapes: ['circle']
+      });
+    } catch {
+      // safe fallback
+    }
+
+    setBeerSadState(true);
+    setBeerSadToast(true);
+
+    setTimeout(() => {
+      setBeerSadToast(false);
+    }, 3800);
+
+    setTimeout(() => {
+      setBeerSadState(false);
+    }, 6000);
   };
 
   // Category counts
@@ -537,13 +577,15 @@ export default function App() {
             <button
               type="button"
               onClick={() => setBeerModalOpen(true)}
-              className="beer-icon-circle-btn"
-              title="A little something for the curious ones."
+              className={`beer-icon-circle-btn ${beerSadState ? 'sad-wobble' : ''}`}
+              title={beerSadState ? "Arya will drink water today... 💧" : "A little something for the curious ones."}
               aria-label="Easter egg"
             >
-              <span className="beer-emoji">🍺</span>
+              <span className="beer-emoji">{beerSadState ? '🥺' : '🍺'}</span>
             </button>
-            <p className="beer-trigger-caption">A little something for the curious ones.</p>
+            <p className="beer-trigger-caption">
+              {beerSadState ? "Arya is drinking water today... 💧" : "A little something for the curious ones."}
+            </p>
           </div>
 
           <div className="footer-divider" />
@@ -603,7 +645,7 @@ export default function App() {
       {/* Beer Easter Egg Modal */}
       <BeerEasterEggModal
         isOpen={beerModalOpen}
-        onClose={() => setBeerModalOpen(false)}
+        onClose={handleCloseBeerModal}
       />
 
       {/* Real Rain Soundscape Lounge */}
@@ -651,6 +693,17 @@ export default function App() {
         onToast={showToast}
         onReportSubmitted={handleReportSubmitted}
       />
+
+      {/* Minimal Sad Reaction Toast */}
+      {beerSadToast && (
+        <aside className="beer-sad-toast" role="status" aria-live="polite">
+          <span className="beer-sad-toast-emoji">🥺💧</span>
+          <div className="beer-sad-toast-body">
+            <span className="beer-sad-toast-title">No beer today...</span>
+            <span className="beer-sad-toast-sub">Arya will drink water instead. Thanks for visiting though!</span>
+          </div>
+        </aside>
+      )}
 
       <Toast
         message={toastMessage}

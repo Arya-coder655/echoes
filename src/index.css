@@ -4080,6 +4080,110 @@ button {
   transform: translateY(-1px);
 }
 
+/* Maybe Later / Dismiss Button */
+.beer-maybe-later-btn {
+  margin-top: 10px;
+  background: transparent;
+  border: none;
+  color: #718376;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.beer-maybe-later-btn:hover {
+  color: #9bb3a2;
+  text-decoration: underline;
+}
+
+/* Minimal Sad Reaction Toast */
+.beer-sad-toast {
+  position: fixed;
+  bottom: calc(75px + env(safe-area-inset-bottom, 12px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(14, 18, 22, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 11px 20px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(56, 189, 248, 0.2);
+  color: #f1f5f9;
+  animation: sadToastSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 92vw;
+  pointer-events: none;
+}
+
+@keyframes sadToastSlideUp {
+  from { opacity: 0; transform: translate(-50%, 16px) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+.beer-sad-toast-emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+  animation: tearDrip 1.4s infinite ease-in-out;
+}
+
+@keyframes tearDrip {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+.beer-sad-toast-body {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.beer-sad-toast-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #7dd3fc;
+}
+
+.beer-sad-toast-sub {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+/* Subtle Sad Wobble for Footer Beer Trigger */
+.sad-wobble {
+  animation: sadWobbleAnim 1.8s infinite ease-in-out !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.3) !important;
+}
+
+@keyframes sadWobbleAnim {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg) scale(0.96); }
+  50% { transform: rotate(6deg) scale(1.02); }
+  75% { transform: rotate(-4deg); }
+}
+
+/* Card Sad Exit Animation */
+.beer-card-sad-exit {
+  animation: beerSadExit 0.45s ease-out forwards;
+}
+
+@keyframes beerSadExit {
+  0% { transform: scale(1) translateY(0); opacity: 1; }
+  30% { transform: scale(0.97) rotate(-2deg); }
+  60% { transform: scale(0.96) rotate(1.5deg); }
+  100% { transform: scale(0.92) translateY(20px); opacity: 0; }
+}
+
+
 
 
 

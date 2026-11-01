@@ -7,6 +7,8 @@ const PAYEE_NAME = 'Arya More';
 
 export default function BeerEasterEggModal({ isOpen, onClose }) {
   const [selectedAmount, setSelectedAmount] = useState(100);
+  const [hasPaid, setHasPaid] = useState(false);
+  const [isSadDismissing, setIsSadDismissing] = useState(false);
 
   if (!isOpen) return null;
 
@@ -15,6 +17,7 @@ export default function BeerEasterEggModal({ isOpen, onClose }) {
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(upiLink)}`;
 
   const handlePayViaApp = () => {
+    setHasPaid(true);
     try {
       confetti({
         particleCount: 75,
@@ -22,33 +25,72 @@ export default function BeerEasterEggModal({ isOpen, onClose }) {
         origin: { y: 0.6 },
         colors: ['#ffd166', '#f4a261', '#e76f51', '#2a9d8f', '#ffffff']
       });
-    } catch (err) {}
+    } catch {
+      // safe fallback
+    }
 
     // On mobile devices, this opens the UPI chooser (GPay / PhonePe / Paytm / BHIM)
     window.location.href = upiLink;
   };
 
+  const handleDirectClose = () => {
+    if (onClose) {
+      onClose(hasPaid);
+    }
+  };
+
+  const handleMaybeNextTime = () => {
+    if (hasPaid) {
+      handleDirectClose();
+      return;
+    }
+    // Minimal sad micro-animation on the card before closing
+    setIsSadDismissing(true);
+    setTimeout(() => {
+      setIsSadDismissing(false);
+      if (onClose) {
+        onClose(false);
+      }
+    }, 450);
+  };
+
   return (
-    <div className="beer-modal-backdrop" onClick={onClose}>
-      <div className="beer-modal-card" onClick={(e) => e.stopPropagation()}>
-        <button className="beer-modal-close-btn" onClick={onClose} aria-label="Close">
+    <div className="beer-modal-backdrop" onClick={handleDirectClose}>
+      <div 
+        className={`beer-modal-card ${isSadDismissing ? 'beer-card-sad-exit' : ''}`} 
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button 
+          className="beer-modal-close-btn" 
+          onClick={handleDirectClose} 
+          aria-label="Close"
+          title="Close"
+        >
           <X size={18} />
         </button>
 
-        <div className="beer-card-badge">OH, YOU FOUND ME!</div>
+        <div className="beer-card-badge">
+          {isSadDismissing ? '🥺 NO BEER TODAY?' : 'OH, YOU FOUND ME!'}
+        </div>
 
-        <h2 className="beer-card-heading">Hey, I'm Arya More.</h2>
-        <p className="beer-card-roles">Founder · Creator · Developer</p>
+        <h2 className="beer-card-heading">
+          {isSadDismissing ? "It's okay, maybe next time!" : "Hey, I'm Arya More."}
+        </h2>
+        <p className="beer-card-roles">
+          {isSadDismissing ? 'Founder · Water Drinker Today 💧' : 'Founder · Creator · Developer'}
+        </p>
 
         <div className="beer-card-divider" />
 
         <div className="beer-card-section">
           <h3 className="beer-section-title">
-            <span className="beer-section-emoji">🍻</span> Buy me a beer?
+            <span className="beer-section-emoji">{isSadDismissing ? '🥺💧' : '🍻'}</span> 
+            <span>{isSadDismissing ? 'Arya sheds a silent tear' : 'Buy me a beer?'}</span>
           </h3>
           <p className="beer-section-desc">
-            If you enjoyed this little corner of the internet, consider buying me a beer. 
-            Your support keeps me creating cool things.
+            {isSadDismissing 
+              ? 'Thank you for exploring this corner of the internet anyway!' 
+              : 'If you enjoyed this little corner of the internet, consider buying me a beer. Your support keeps me creating cool things.'}
           </p>
 
           {/* Amount Selection */}
@@ -99,6 +141,15 @@ export default function BeerEasterEggModal({ isOpen, onClose }) {
           >
             <Smartphone size={17} />
             <span>Open in UPI App (GPay / PhonePe) 🍺</span>
+          </button>
+
+          {/* Minimal "Maybe next time" button */}
+          <button 
+            type="button" 
+            onClick={handleMaybeNextTime}
+            className="beer-maybe-later-btn"
+          >
+            <span>Maybe next time 🥺</span>
           </button>
         </div>
 
