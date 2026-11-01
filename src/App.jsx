@@ -8,6 +8,7 @@ import EchoComposer from './components/EchoComposer';
 import CommentsDrawer from './components/CommentsDrawer';
 import ShareModal from './components/ShareModal';
 import AboutModal from './components/AboutModal';
+import BeerEasterEggModal from './components/BeerEasterEggModal';
 import SoundscapeMixerModal from './components/SoundscapeMixerModal';
 import ZenCinemaModal from './components/ZenCinemaModal';
 import CatharsisRitualModal from './components/CatharsisRitualModal';
@@ -61,7 +62,7 @@ export default function App() {
   const [commentsEcho, setCommentsEcho] = useState(null);
   const [shareEcho, setShareEcho] = useState(null);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [architectForceReveal, setArchitectForceReveal] = useState(false);
+  const [beerModalOpen, setBeerModalOpen] = useState(false);
   const [mixerOpen, setMixerOpen] = useState(false);
   const [zenCinemaOpen, setZenCinemaOpen] = useState(false);
   const [ritualOpen, setRitualOpen] = useState(false);
@@ -159,45 +160,6 @@ export default function App() {
   const showToast = (msg) => {
     setToastMessage(msg);
   };
-
-  // Secret Easter Egg: typing "arya" opens the Architect reveal
-  useEffect(() => {
-    let keyBuffer = '';
-    const handleKeyDown = (e) => {
-      const target = e.target;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return;
-      }
-      
-      const key = (e.key || '').toLowerCase();
-      // Only record single characters a-z
-      if (/^[a-z]$/.test(key)) {
-        keyBuffer += key;
-        if (keyBuffer.length > 10) keyBuffer = keyBuffer.slice(-10);
-        
-        if (keyBuffer.endsWith('arya')) {
-          keyBuffer = '';
-          localStorage.setItem('echoes_architect_revealed', 'true');
-          setArchitectForceReveal(true);
-          setAboutOpen(true);
-          try {
-            confetti({
-              particleCount: 100,
-              spread: 80,
-              origin: { y: 0.5 },
-              colors: ['#fc2904', '#ffd700', '#6366f1', '#a855f7', '#34d399', '#ffffff']
-            });
-          } catch (err) {
-            // safe fallback
-          }
-          showToast('✦ Easter Egg Unveiled: Sanctuary Architect Arya More!');
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   const handleLike = async (id) => {
     const target = echoes.find((e) => e.id === id);
@@ -566,9 +528,22 @@ export default function App() {
                 <li><button type="button" onClick={() => setAboutOpen(true)}>Why This Space Exists</button></li>
                 <li><button type="button" onClick={() => setAboutOpen(true)}>100% Anonymous Promise</button></li>
                 <li><button type="button" onClick={() => setAboutOpen(true)}>Sanctuary Principles</button></li>
-                <li><button type="button" onClick={() => setAboutOpen(true)} className="footer-easter-egg-link">✦ The Architect's Riddle 🗝️</button></li>
               </ul>
             </div>
+          </div>
+
+          {/* Beer Easter Egg Trigger */}
+          <div className="beer-trigger-section">
+            <button
+              type="button"
+              onClick={() => setBeerModalOpen(true)}
+              className="beer-icon-circle-btn"
+              title="A little something for the curious ones."
+              aria-label="Easter egg"
+            >
+              <span className="beer-emoji">🍺</span>
+            </button>
+            <p className="beer-trigger-caption">A little something for the curious ones.</p>
           </div>
 
           <div className="footer-divider" />
@@ -621,11 +596,13 @@ export default function App() {
 
       <AboutModal
         isOpen={aboutOpen}
-        onClose={() => {
-          setAboutOpen(false);
-          setArchitectForceReveal(false);
-        }}
-        forceReveal={architectForceReveal}
+        onClose={() => setAboutOpen(false)}
+      />
+
+      {/* Beer Easter Egg Modal */}
+      <BeerEasterEggModal
+        isOpen={beerModalOpen}
+        onClose={() => setBeerModalOpen(false)}
       />
 
       {/* Real Rain Soundscape Lounge */}
