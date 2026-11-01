@@ -158,6 +158,26 @@ export default function App() {
     setToastMessage(msg);
   };
 
+  // Secret Easter Egg: typing "arya" opens the Architect reveal
+  useEffect(() => {
+    let keyBuffer = '';
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
+      keyBuffer += (e.key || '').toLowerCase();
+      if (keyBuffer.length > 10) keyBuffer = keyBuffer.slice(-10);
+      
+      if (keyBuffer.endsWith('arya')) {
+        keyBuffer = '';
+        localStorage.setItem('echoes_architect_revealed', 'true');
+        setAboutOpen(true);
+        showToast('✦ Easter Egg Unveiled: Sanctuary Architect Arya More!');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleLike = async (id) => {
     const target = echoes.find((e) => e.id === id);
     const currentlyLiked = target ? target.liked : false;
@@ -525,6 +545,7 @@ export default function App() {
                 <li><button type="button" onClick={() => setAboutOpen(true)}>Why This Space Exists</button></li>
                 <li><button type="button" onClick={() => setAboutOpen(true)}>100% Anonymous Promise</button></li>
                 <li><button type="button" onClick={() => setAboutOpen(true)}>Sanctuary Principles</button></li>
+                <li><button type="button" onClick={() => setAboutOpen(true)} className="footer-easter-egg-link">✦ The Architect's Riddle 🗝️</button></li>
               </ul>
             </div>
           </div>

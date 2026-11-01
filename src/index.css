@@ -3372,3 +3372,341 @@ button {
   50% { opacity: 0.5; transform: scale(0.85); }
 }
 
+/* ==========================================================================
+   Easter Egg: The Architect's Inscription & Reveal
+   ========================================================================== */
+.architect-riddle-container {
+  background: radial-gradient(ellipse at top left, rgba(252, 41, 4, 0.08), rgba(20, 20, 25, 0.6));
+  border: 1px dashed rgba(252, 41, 4, 0.35);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  position: relative;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.architect-riddle-container:hover {
+  border-color: rgba(252, 41, 4, 0.6);
+  box-shadow: 0 0 20px rgba(252, 41, 4, 0.1);
+}
+
+.architect-riddle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.architect-riddle-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.architect-riddle-icon {
+  color: #ff6b4a;
+  filter: drop-shadow(0 0 6px rgba(255, 107, 74, 0.4));
+}
+
+.architect-riddle-title {
+  font-size: 0.96rem;
+  font-family: var(--font-heading);
+  letter-spacing: 0.03em;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.architect-riddle-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(255, 215, 0, 0.12);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.architect-riddle-poem {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+  margin-bottom: 14px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(252, 41, 4, 0.4);
+}
+
+.architect-form-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.architect-input {
+  flex: 1;
+  background: rgba(10, 10, 15, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: #f1f5f9;
+  font-size: 0.88rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.architect-input:focus {
+  border-color: #ff4b2b;
+  box-shadow: 0 0 10px rgba(252, 41, 4, 0.25);
+}
+
+.architect-input.shake {
+  animation: shakeError 0.5s ease-in-out;
+  border-color: #ef4444;
+}
+
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.architect-unlock-btn {
+  background: linear-gradient(135deg, #fc2904, #ff4b2b);
+  color: #ffffff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.architect-unlock-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(252, 41, 4, 0.35);
+}
+
+.architect-hint-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.architect-hint-toggle:hover {
+  color: #ffd700;
+}
+
+.architect-hint-box {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 215, 0, 0.06);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  color: #fef08a;
+  line-height: 1.5;
+  animation: fadeInHint 0.3s ease;
+}
+
+@keyframes fadeInHint {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.architect-error-text {
+  font-size: 0.78rem;
+  color: #f87171;
+  margin-top: 8px;
+}
+
+/* Revealed Card */
+.architect-reveal-card {
+  background: linear-gradient(135deg, rgba(30, 20, 25, 0.95), rgba(15, 15, 22, 0.98));
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.12), 0 10px 30px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+  animation: cardGlowIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardGlowIn {
+  from { opacity: 0; transform: scale(0.96); filter: blur(4px); }
+  to { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+.architect-reveal-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ffd700, #fc2904, transparent);
+}
+
+.architect-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.architect-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.architect-relock-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.74rem;
+  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.2s ease;
+}
+
+.architect-relock-btn:hover {
+  color: #f87171;
+}
+
+.architect-profile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.architect-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fc2904, #ff8c00);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(252, 41, 4, 0.45);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.architect-crown-icon {
+  position: absolute;
+  top: -8px;
+  right: -4px;
+  color: #ffd700;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
+  transform: rotate(15deg);
+}
+
+.architect-names h3 {
+  font-size: 1.35rem;
+  font-family: var(--font-heading);
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  margin: 0 0 3px 0;
+}
+
+.architect-names p {
+  font-size: 0.82rem;
+  color: #fbbf24;
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.architect-quote-text {
+  font-size: 0.88rem;
+  font-style: italic;
+  color: #e2e8f0;
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid #ffd700;
+}
+
+.architect-tags-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.architect-pill {
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: #cbd5e1;
+}
+
+.architect-trophy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.architect-trophy-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #a7f3d0;
+}
+
+.footer-easter-egg-link {
+  color: #ffd700 !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footer-easter-egg-link:hover {
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+  transform: translateX(3px);
+}
+
+
