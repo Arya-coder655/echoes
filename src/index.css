@@ -3718,11 +3718,11 @@ button {
 
 /* QR Code Card */
 .beer-qr-card {
-  margin-top: 16px;
-  background: rgba(0, 0, 0, 0.4);
+  margin: 14px 0 16px 0;
+  background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
-  padding: 16px;
+  padding: 18px 16px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -3733,32 +3733,68 @@ button {
 .beer-qr-img-wrapper {
   background: #ffffff;
   padding: 10px;
-  border-radius: 10px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .beer-qr-image {
   width: 160px;
   height: 160px;
   display: block;
+  border-radius: 4px;
 }
 
 .beer-qr-caption {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: #a2b0a5;
-  margin: 12px 0 8px 0;
+  margin: 12px 0 10px 0;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.beer-upi-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .beer-upi-pill {
   background: rgba(255, 255, 255, 0.08);
-  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
   color: #d5e4d3;
   font-family: monospace;
   font-size: 0.82rem;
-  padding: 4px 12px;
+  padding: 6px 12px;
   border-radius: 6px;
   letter-spacing: 0.04em;
 }
+
+.beer-copy-upi-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+
+.beer-copy-upi-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
 
 
 
