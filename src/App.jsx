@@ -418,9 +418,9 @@ export default function App() {
                 {activeCategory === 'themed' && 'Themed Reflections'}
                 {activeCategory === 'bookmarks' && 'Your Saved Echoes'}
               </h2>
-              <div className="db-status-badge" title="Database synchronization status">
+              <div className="db-status-badge" title="Live community stories">
                 <span className={`db-status-dot ${isDbConnected ? '' : 'offline'}`} />
-                <span>{isDbConnected ? 'MySQL DB Synchronized' : 'Offline Cache'}</span>
+                <span>{isDbConnected ? 'Stories time...' : 'Saved Echoes'}</span>
               </div>
             </div>
             <span className="feed-subtitle">
