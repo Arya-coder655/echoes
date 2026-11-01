@@ -16,14 +16,20 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export default function AboutModal({ isOpen, onClose }) {
+export default function AboutModal({ isOpen, onClose, forceReveal = false }) {
   const [isRevealed, setIsRevealed] = useState(() => {
-    return typeof window !== 'undefined' && localStorage.getItem('echoes_architect_revealed') === 'true';
+    return typeof window !== 'undefined' && (forceReveal || localStorage.getItem('echoes_architect_revealed') === 'true');
   });
   const [guess, setGuess] = useState('');
   const [showHint, setShowHint] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [shake, setShake] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && (forceReveal || localStorage.getItem('echoes_architect_revealed') === 'true')) {
+      setIsRevealed(true);
+    }
+  }, [isOpen, forceReveal]);
 
   if (!isOpen) return null;
 

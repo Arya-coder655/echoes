@@ -15,6 +15,7 @@ import WhisperingWellModal from './components/WhisperingWellModal';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import ReportModal from './components/ReportModal';
+import confetti from 'canvas-confetti';
 import { INITIAL_ECHOES } from './data/initialEchoes';
 import { soundscape } from './utils/audio';
 import {
@@ -60,6 +61,7 @@ export default function App() {
   const [commentsEcho, setCommentsEcho] = useState(null);
   const [shareEcho, setShareEcho] = useState(null);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [architectForceReveal, setArchitectForceReveal] = useState(false);
   const [mixerOpen, setMixerOpen] = useState(false);
   const [zenCinemaOpen, setZenCinemaOpen] = useState(false);
   const [ritualOpen, setRitualOpen] = useState(false);
@@ -162,15 +164,34 @@ export default function App() {
   useEffect(() => {
     let keyBuffer = '';
     const handleKeyDown = (e) => {
-      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
-      keyBuffer += (e.key || '').toLowerCase();
-      if (keyBuffer.length > 10) keyBuffer = keyBuffer.slice(-10);
+      const target = e.target;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
       
-      if (keyBuffer.endsWith('arya')) {
-        keyBuffer = '';
-        localStorage.setItem('echoes_architect_revealed', 'true');
-        setAboutOpen(true);
-        showToast('✦ Easter Egg Unveiled: Sanctuary Architect Arya More!');
+      const key = (e.key || '').toLowerCase();
+      // Only record single characters a-z
+      if (/^[a-z]$/.test(key)) {
+        keyBuffer += key;
+        if (keyBuffer.length > 10) keyBuffer = keyBuffer.slice(-10);
+        
+        if (keyBuffer.endsWith('arya')) {
+          keyBuffer = '';
+          localStorage.setItem('echoes_architect_revealed', 'true');
+          setArchitectForceReveal(true);
+          setAboutOpen(true);
+          try {
+            confetti({
+              particleCount: 100,
+              spread: 80,
+              origin: { y: 0.5 },
+              colors: ['#fc2904', '#ffd700', '#6366f1', '#a855f7', '#34d399', '#ffffff']
+            });
+          } catch (err) {
+            // safe fallback
+          }
+          showToast('✦ Easter Egg Unveiled: Sanctuary Architect Arya More!');
+        }
       }
     };
 
@@ -600,7 +621,11 @@ export default function App() {
 
       <AboutModal
         isOpen={aboutOpen}
-        onClose={() => setAboutOpen(false)}
+        onClose={() => {
+          setAboutOpen(false);
+          setArchitectForceReveal(false);
+        }}
+        forceReveal={architectForceReveal}
       />
 
       {/* Real Rain Soundscape Lounge */}
