@@ -796,33 +796,55 @@ button {
   border-color: rgba(252, 41, 4, 0.6);
 }
 
-/* Echo Cards Grid */
+/* Pinterest-Style Masonry Grid */
 .echoes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 24px;
+  column-count: 3;
+  column-gap: 24px;
+  width: 100%;
 }
 
 .echo-card {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  display: block;
+  width: 100%;
+  margin-bottom: 24px;
   position: relative;
   background: var(--bg-card);
   border: 1px solid var(--theme-border, var(--border-subtle));
   border-radius: var(--radius-lg);
   padding: 24px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease, border-color 0.28s ease;
   overflow: hidden;
+  box-sizing: border-box;
+  will-change: transform;
 }
 
 .echo-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-5px);
   border-color: var(--theme-color, rgba(252, 41, 4, 0.6));
-  box-shadow: 0 12px 36px var(--theme-glow, rgba(252, 41, 4, 0.25));
+  box-shadow: 0 16px 36px var(--theme-glow, rgba(252, 41, 4, 0.25));
+  z-index: 2;
+}
+
+/* Modern CSS Grid Masonry when natively supported */
+@supports (grid-template-rows: masonry) {
+  .echoes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: masonry;
+    gap: 24px;
+    column-count: initial;
+    column-gap: initial;
+  }
+
+  .echo-card {
+    margin-bottom: 0;
+  }
 }
 
 .echo-card-top-glow {
@@ -920,7 +942,6 @@ button {
 .echo-card-body {
   position: relative;
   margin-bottom: 18px;
-  flex: 1;
 }
 
 .quote-mark {
@@ -944,16 +965,18 @@ button {
   margin-bottom: 18px;
   cursor: pointer;
   border: 1px solid var(--border-subtle);
-  max-height: 240px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .echo-attached-img {
   width: 100%;
-  height: 100%;
-  max-height: 240px;
-  object-fit: cover;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
   display: block;
-  transition: transform 0.3s ease;
+  border-radius: calc(var(--radius-md) - 1px);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .image-zoom-overlay {
@@ -2863,6 +2886,26 @@ button {
    Comprehensive Responsive System (All Screens: Phones to Ultra-wide)
    ========================================================================== */
 
+/* Tablets & Medium Screens (<= 1024px) */
+@media (max-width: 1024px) {
+  .echoes-grid {
+    column-count: 2;
+    column-gap: 20px;
+  }
+
+  .echo-card {
+    margin-bottom: 20px;
+    padding: 20px 18px;
+  }
+
+  @supports (grid-template-rows: masonry) {
+    .echoes-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+  }
+}
+
 /* Tablets & Small Laptops (< 992px) */
 @media (max-width: 992px) {
   .minimal-desktop-nav {
@@ -3028,14 +3071,21 @@ button {
     font-size: 0.78rem;
   }
 
-  /* Echo Cards */
+  /* Echo Cards (Tablets <= 768px: 2 columns) */
   .echoes-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    column-count: 2;
+    column-gap: 18px;
   }
   .echo-card {
-    padding: 16px 14px;
-    border-radius: 16px;
+    margin-bottom: 18px;
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+  @supports (grid-template-rows: masonry) {
+    .echoes-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
   }
   .echo-message-text {
     font-size: 0.94rem;
@@ -3437,6 +3487,28 @@ button {
   .footer-links-list.mobile-open button:hover {
     color: #ffffff;
     background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Mobile Phones (<= 640px): 1 Column Masonry */
+@media (max-width: 640px) {
+  .echoes-grid {
+    column-count: 1;
+    column-gap: 0;
+  }
+  .echo-card {
+    margin-bottom: 16px;
+    padding: 16px 14px;
+    border-radius: 16px;
+  }
+  @supports (grid-template-rows: masonry) {
+    .echoes-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .echo-card {
+      margin-bottom: 0;
+    }
   }
 }
 
