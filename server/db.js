@@ -392,7 +392,7 @@ export async function reportEcho(echoId, reason, details = '') {
 
   await pool.query('UPDATE echoes SET report_count = report_count + 1 WHERE id = ?', [echoId]);
 
-  const maxReports = Number(process.env.MAX_REPORTS_BEFORE_REVIEW || 3);
+  const maxReports = Number(process.env.MAX_REPORTS_BEFORE_REVIEW || 1);
   const [rows] = await pool.query('SELECT report_count FROM echoes WHERE id = ?', [echoId]);
   const count = rows[0]?.report_count || 1;
 

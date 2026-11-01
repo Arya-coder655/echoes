@@ -30,13 +30,34 @@ import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, Chevr
 
 const STORAGE_KEY_POSTS = 'echoes_of_heart_posts_v2';
 const STORAGE_KEY_BOOKMARKS = 'echoes_of_heart_bookmarks_v2';
+const STORAGE_KEY_REPORTED = 'echoes_of_heart_reported_ids_v2';
 
 export default function App() {
+  const [reportedIds, setReportedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_REPORTED);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed reading reported echoes', e);
+    }
+    return [];
+  });
+
   // Initialize state with local storage fallback
   const [echoes, setEchoes] = useState(() => {
     try {
+      let currentReported = [];
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_REPORTED);
+        if (raw) currentReported = JSON.parse(raw);
+      } catch {}
       const saved = localStorage.getItem(STORAGE_KEY_POSTS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((e) => !currentReported.includes(e.id));
+        }
+      }
     } catch (e) {
       console.error('Failed reading local storage', e);
     }
@@ -92,7 +113,13 @@ export default function App() {
       const result = await fetchEchoesFromDb();
       if (!isMounted) return;
       if (result.data && Array.isArray(result.data)) {
-        setEchoes(result.data);
+        let currentReported = [];
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY_REPORTED);
+          if (raw) currentReported = JSON.parse(raw);
+        } catch {}
+        const cleanData = result.data.filter((e) => !currentReported.includes(e.id));
+        setEchoes(cleanData);
         setIsDbConnected(true);
       } else {
         setIsDbConnected(false);
@@ -152,6 +179,14 @@ export default function App() {
       console.error('Failed saving bookmarks', e);
     }
   }, [bookmarks]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_REPORTED, JSON.stringify(reportedIds));
+    } catch (e) {
+      console.error('Failed saving reported echoes', e);
+    }
+  }, [reportedIds]);
 
   // Deep link handling (e.g. #ECHO-10829)
   useEffect(() => {
@@ -268,8 +303,15 @@ export default function App() {
   };
 
   const handleReportSubmitted = (echoId) => {
+    setReportedIds((prev) => {
+      const next = prev.includes(echoId) ? prev : [...prev, echoId];
+      try {
+        localStorage.setItem(STORAGE_KEY_REPORTED, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     setEchoes((prev) => prev.filter((e) => e.id !== echoId));
-    showToast('Echo submitted for review and hidden from your feed.');
+    showToast('Echo submitted for review and removed from your feed.');
   };
 
   const handleCloseBeerModal = (didPay) => {
@@ -311,18 +353,20 @@ export default function App() {
 
   // Category counts
   const categoryCounts = useMemo(() => {
-    const counts = { all: echoes.length, regret: 0, 'last-words': 0, unsent: 0, themed: 0 };
-    echoes.forEach((e) => {
+    const counts = { all: 0, regret: 0, 'last-words': 0, unsent: 0, themed: 0 };
+    const visible = echoes.filter((e) => !reportedIds.includes(e.id));
+    counts.all = visible.length;
+    visible.forEach((e) => {
       if (counts[e.category] !== undefined) {
         counts[e.category]++;
       }
     });
     return counts;
-  }, [echoes]);
+  }, [echoes, reportedIds]);
 
   // Filter & Sort logic
   const filteredEchoes = useMemo(() => {
-    let list = [...echoes];
+    let list = echoes.filter((e) => !reportedIds.includes(e.id));
 
     if (activeCategory === 'bookmarks') {
       list = list.filter((e) => bookmarks.includes(e.id));
@@ -355,7 +399,7 @@ export default function App() {
     });
 
     return list;
-  }, [echoes, bookmarks, activeCategory, searchQuery, sortBy]);
+  }, [echoes, bookmarks, activeCategory, searchQuery, sortBy, reportedIds]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

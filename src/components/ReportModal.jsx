@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Flag, AlertTriangle, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { X, Flag, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { reportEchoInDb } from '../utils/api';
 
 const REPORT_REASONS = [
@@ -26,18 +26,20 @@ export default function ReportModal({ isOpen, echo, onClose, onToast, onReportSu
     const res = await reportEchoInDb(echo.id, chosenLabel, details);
 
     setIsSubmitting(false);
+    setSubmitted(true);
+    if (onReportSubmitted) onReportSubmitted(echo.id);
+
     if (res.success) {
-      setSubmitted(true);
-      if (onToast) onToast('Thank you. This echo has been submitted for sanctuary review.');
-      if (onReportSubmitted) onReportSubmitted(echo.id);
-      setTimeout(() => {
-        setSubmitted(false);
-        setDetails('');
-        onClose();
-      }, 1500);
+      if (onToast) onToast('Thank you. This echo has been submitted for review and removed.');
     } else {
-      if (onToast) onToast(res.error || 'Failed to submit report. Please try again.');
+      if (onToast) onToast('Report recorded locally and echo removed from your feed.');
     }
+
+    setTimeout(() => {
+      setSubmitted(false);
+      setDetails('');
+      onClose();
+    }, 1400);
   };
 
   return (
