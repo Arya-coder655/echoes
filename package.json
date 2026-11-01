@@ -12,6 +12,7 @@
     "db:restore": "node scripts/restore.js",
     "db:view": "node scripts/view-posts.js",
     "build": "vite build",
+    "deploy:gh": "npm run build && node scripts/deploy-gh-pages.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },
