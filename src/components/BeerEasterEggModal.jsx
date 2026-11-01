@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, Copy, Smartphone, Sparkles, QrCode } from 'lucide-react';
+import { X, Smartphone } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const UPI_ID = '9322794668-3@ybl';
@@ -7,7 +7,6 @@ const PAYEE_NAME = 'Arya More';
 
 export default function BeerEasterEggModal({ isOpen, onClose }) {
   const [selectedAmount, setSelectedAmount] = useState(100);
-  const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
@@ -27,17 +26,6 @@ export default function BeerEasterEggModal({ isOpen, onClose }) {
 
     // On mobile devices, this opens the UPI chooser (GPay / PhonePe / Paytm / BHIM)
     window.location.href = upiLink;
-  };
-
-  const handleCopyUpi = async () => {
-    try {
-      await navigator.clipboard.writeText(UPI_ID);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch (err) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }
   };
 
   return (
@@ -88,7 +76,7 @@ export default function BeerEasterEggModal({ isOpen, onClose }) {
             </button>
           </div>
 
-          {/* ALWAYS-VISIBLE UPI QR CODE */}
+          {/* ALWAYS-VISIBLE UPI QR CODE (Phone number hidden from text) */}
           <div className="beer-qr-card">
             <div className="beer-qr-img-wrapper">
               <img 
@@ -101,20 +89,6 @@ export default function BeerEasterEggModal({ isOpen, onClose }) {
             <p className="beer-qr-caption">
               Scan with <strong>GPay, PhonePe, Paytm</strong>, or any UPI app to pay <strong>₹{selectedAmount}</strong>
             </p>
-
-            {/* UPI ID + 1-Click Copy */}
-            <div className="beer-upi-row">
-              <span className="beer-upi-pill">{UPI_ID}</span>
-              <button
-                type="button"
-                onClick={handleCopyUpi}
-                className="beer-copy-upi-btn"
-                title="Copy UPI ID"
-              >
-                {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                <span>{copied ? "Copied!" : "Copy"}</span>
-              </button>
-            </div>
           </div>
 
           {/* Mobile 1-Tap App Payment Button */}
