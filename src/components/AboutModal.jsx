@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, ShieldCheck, Heart, Sparkles, Feather, Users } from 'lucide-react';
 
-export default function AboutModal({ isOpen, onClose }) {
+export default function AboutModal({ isOpen, onClose, onOpenBeer }) {
   if (!isOpen) return null;
 
   return (
@@ -73,6 +73,20 @@ export default function AboutModal({ isOpen, onClose }) {
         </div>
 
         <div className="about-modal-footer">
+          {onOpenBeer && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenBeer();
+              }}
+              className="about-beer-pill-btn"
+              title="A little something for the curious ones 🍺"
+            >
+              <span>🍺</span>
+              <span>Meet the Creator</span>
+            </button>
+          )}
           <button onClick={onClose} className="about-understand-btn">
             Enter with an Open Heart
           </button>

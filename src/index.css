@@ -2550,7 +2550,7 @@ button {
 .about-modal-panel {
   width: 100%;
   max-width: 620px;
-  max-height: 90vh;
+  max-height: min(88vh, 720px);
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-highlight);
   border-radius: var(--radius-lg);
@@ -2567,6 +2567,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .about-title-row { display: flex; align-items: center; gap: 12px; }
@@ -2586,9 +2587,11 @@ button {
 .about-body-content {
   padding: 24px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  flex: 1;
 }
 
 .about-lead { font-size: 1.05rem; color: #e2e8f0; line-height: 1.6; }
@@ -2620,7 +2623,40 @@ button {
 .guidelines-title { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; color: #ff6b4a; margin-bottom: 10px; }
 .guidelines-list { padding-left: 20px; font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 6px; }
 
-.about-modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-subtle); text-align: right; }
+.about-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg-surface-elevated);
+  flex-shrink: 0;
+}
+
+.about-beer-pill-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #cdeac0;
+  padding: 9px 18px;
+  border-radius: var(--radius-full);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s ease;
+}
+
+.about-beer-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 209, 102, 0.5);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(255, 209, 102, 0.25);
+}
+
 .about-understand-btn {
   background: linear-gradient(135deg, #fc2904, #ff4b2b);
   color: #ffffff;
@@ -2629,6 +2665,7 @@ button {
   border-radius: var(--radius-full);
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 /* Image Lightbox */
@@ -3019,6 +3056,28 @@ button {
     max-width: 100%;
     width: 100%;
     max-height: 90vh;
+    border-radius: 20px 20px 0 0;
+    margin: 0;
+  }
+  .about-modal-footer {
+    flex-direction: column-reverse;
+    gap: 10px;
+    align-items: stretch;
+    padding: 14px 18px;
+  }
+  .about-understand-btn,
+  .about-beer-pill-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+  .beer-modal-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .beer-modal-card {
+    max-height: 88vh;
+    padding: 26px 20px 22px;
     border-radius: 20px 20px 0 0;
     margin: 0;
   }

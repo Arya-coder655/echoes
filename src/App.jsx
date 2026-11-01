@@ -597,6 +597,7 @@ export default function App() {
       <AboutModal
         isOpen={aboutOpen}
         onClose={() => setAboutOpen(false)}
+        onOpenBeer={() => setBeerModalOpen(true)}
       />
 
       {/* Beer Easter Egg Modal */}
