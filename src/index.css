@@ -3043,46 +3043,231 @@ button {
   .ritual-modal-backdrop,
   .well-modal-backdrop,
   .share-modal-backdrop,
-  .about-modal-backdrop {
+  .about-modal-backdrop,
+  .report-modal-backdrop,
+  .drawer-backdrop,
+  .beer-modal-backdrop {
     padding: 0;
     align-items: flex-end;
   }
+
   .composer-modal-window,
   .mixer-modal-panel,
   .ritual-modal-panel,
   .well-modal-panel,
   .share-modal-panel,
-  .about-modal-panel {
+  .about-modal-panel,
+  .report-modal-window,
+  .drawer-panel,
+  .beer-modal-card {
     max-width: 100%;
     width: 100%;
-    max-height: 90vh;
+    max-height: min(92vh, 760px);
     border-radius: 20px 20px 0 0;
     margin: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+  }
+
+  /* Tactile Bottom Sheet Drag Pill */
+  .beer-modal-card::before,
+  .about-modal-panel::before,
+  .composer-modal-window::before,
+  .mixer-modal-panel::before,
+  .ritual-modal-panel::before,
+  .well-modal-panel::before,
+  .share-modal-panel::before,
+  .report-modal-window::before,
+  .drawer-panel::before {
+    content: '';
+    display: block;
+    width: 38px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 2px;
+    margin: 0 auto 14px auto;
+  }
+
+  /* Beer Easter Egg Modal Mobile */
+  .beer-modal-card {
+    padding: 22px 18px max(24px, env(safe-area-inset-bottom));
+  }
+  .beer-card-heading {
+    font-size: clamp(1.35rem, 6vw, 1.7rem);
+  }
+  .beer-card-roles {
+    font-size: 0.88rem;
+    margin-bottom: 14px;
+  }
+  .beer-section-title {
+    font-size: 1.15rem;
+  }
+  .beer-section-desc {
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+    max-width: 100%;
+  }
+  .beer-amount-selector {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .beer-amount-pill {
+    padding: 10px 4px;
+    font-size: 0.84rem;
+    min-width: 0;
+  }
+  .beer-qr-card {
+    padding: 14px 12px;
+    margin: 10px 0 14px 0;
+  }
+  .beer-qr-image {
+    width: 135px;
+    height: 135px;
+    max-width: 135px;
+  }
+  .beer-qr-caption {
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+  .beer-cta-button {
+    padding: 13px 14px;
+    font-size: 0.88rem;
+    min-height: 46px;
+    border-radius: 12px;
+  }
+
+  /* About Modal Mobile */
+  .about-modal-header {
+    padding: 14px 18px;
+  }
+  .about-body-content {
+    padding: 16px 18px;
+  }
+  .about-pillars-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
   .about-modal-footer {
     flex-direction: column-reverse;
     gap: 10px;
     align-items: stretch;
-    padding: 14px 18px;
+    padding: 14px 18px max(18px, env(safe-area-inset-bottom));
   }
   .about-understand-btn,
   .about-beer-pill-btn {
     width: 100%;
     justify-content: center;
     text-align: center;
+    min-height: 44px;
   }
-  .beer-modal-backdrop {
-    padding: 0;
-    align-items: flex-end;
+
+  /* Comments Drawer Mobile */
+  .drawer-panel {
+    border-left: none;
+    border-top: 1px solid var(--border-highlight);
+    height: auto;
+    max-height: min(92vh, 760px);
   }
-  .beer-modal-card {
-    max-height: 88vh;
-    padding: 26px 20px 22px;
-    border-radius: 20px 20px 0 0;
-    margin: 0;
+  .drawer-header {
+    padding: 14px 18px;
   }
+  .drawer-echo-summary {
+    padding: 10px 14px;
+    margin: 0 14px 8px;
+    border-radius: 10px;
+  }
+  .drawer-comments-list {
+    padding: 10px 14px;
+    max-height: 45vh;
+  }
+  .drawer-input-form {
+    padding: 12px 14px max(14px, env(safe-area-inset-bottom));
+  }
+
+  /* Report Modal Mobile */
+  .report-modal-window {
+    padding: 20px 16px max(20px, env(safe-area-inset-bottom));
+  }
+  .report-modal-footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+    width: 100%;
+  }
+  .report-cancel-btn,
+  .report-submit-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  /* Ritual Modal Mobile */
+  .ritual-modal-panel {
+    padding: 20px 16px max(20px, env(safe-area-inset-bottom));
+  }
+  .parchment-container {
+    min-height: 130px;
+  }
+  .ritual-footer-bar {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .burn-ignite-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+  .ritual-hint {
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Whispering Well Mobile */
+  .well-modal-panel {
+    padding: 20px 16px max(20px, env(safe-area-inset-bottom));
+  }
+  .well-echo-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .well-love-btn,
+  .well-again-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  /* Mixer Mobile */
+  .mixer-modal-panel {
+    padding: 20px 16px max(20px, env(safe-area-inset-bottom));
+  }
+  .tracks-mixer-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .preset-buttons-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Share Modal Mobile */
+  .share-modal-panel {
+    padding: 22px 16px max(22px, env(safe-area-inset-bottom));
+  }
+  .social-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .download-card-btn {
+    font-size: 0.84rem;
+    padding: 12px 10px;
+  }
+
+  /* Composer Mobile */
   .composer-form {
-    padding: 18px 14px;
+    padding: 18px 14px max(18px, env(safe-area-inset-bottom));
   }
   .composer-text-input,
   .composer-textarea,
@@ -3090,12 +3275,32 @@ button {
   .drawer-comment-input {
     font-size: 16px !important; /* iOS zoom prevention */
   }
-  .tracks-mixer-grid {
-    grid-template-columns: 1fr;
+  .category-select-buttons {
+    gap: 6px;
   }
-  .social-grid {
-    grid-template-columns: 1fr 1fr;
+  .cat-btn {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+  }
+  .composer-actions-bar {
+    flex-wrap: wrap;
     gap: 8px;
+  }
+  .actions-right {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .publish-btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 42px;
+  }
+
+  /* Image Modal Lightbox Mobile */
+  .image-modal-close {
+    top: 10px;
+    right: 10px;
   }
 
   /* Zen Cinema on Mobile */
@@ -3106,13 +3311,17 @@ button {
     font-size: 0.8rem;
   }
   .zen-cinema-stage {
-    padding: 0 16px;
+    padding: 0 10px;
   }
   .zen-nav-btn {
     padding: 6px;
   }
+  .zen-nav-btn svg {
+    width: 24px;
+    height: 24px;
+  }
   .zen-quote-text {
-    font-size: clamp(1.15rem, 5.5vw, 1.6rem);
+    font-size: clamp(1.1rem, 5.5vw, 1.5rem);
     line-height: 1.45;
   }
   .zen-candle-btn {
@@ -3128,7 +3337,7 @@ button {
 
   /* Footer */
   .main-footer {
-    padding: 40px 16px 90px;
+    padding: 40px 16px calc(90px + env(safe-area-inset-bottom));
   }
   .footer-top-row {
     flex-direction: column;
@@ -3143,14 +3352,65 @@ button {
   }
 }
 
-/* Ultra Small Screens (< 380px: iPhone SE, Galaxy Fold cover) */
-@media (max-width: 380px) {
-  .brand-text-single {
-    font-size: 0.98rem;
-    letter-spacing: 1px;
+/* Screens under 540px */
+@media (max-width: 540px) {
+  .section-feed-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .quick-compose-trigger {
+    width: 100%;
+    justify-content: center;
+  }
+  .echo-card-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .footer-left-actions,
+  .footer-right-actions {
+    gap: 6px;
+  }
+}
+
+/* Screens under 440px */
+@media (max-width: 440px) {
+  .action-label {
+    display: none;
+  }
+  .action-pill {
+    padding: 5px 8px;
+    font-size: 0.74rem;
+    gap: 4px;
+  }
+  .action-icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .echo-card {
+    padding: 14px 12px;
   }
   .hero-experiences-strip {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Ultra Small Screens (< 380px: iPhone SE, Galaxy Fold cover) */
+@media (max-width: 380px) {
+  .brand-text-single {
+    font-size: 0.95rem;
+    letter-spacing: 0.8px;
+  }
+  .minimal-navbar {
+    padding: 6px 10px;
+  }
+  .minimal-cta-btn {
+    padding: 6px 10px;
+    font-size: 0.74rem;
+  }
+  .mobile-nav-pills-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
   }
   .hero-stats-grid {
     grid-template-columns: 1fr;
@@ -3161,8 +3421,26 @@ button {
     justify-content: center;
     gap: 10px;
   }
-  .action-label {
-    display: none;
+  .beer-amount-pill {
+    font-size: 0.78rem;
+    padding: 8px 2px;
+  }
+  .beer-qr-image {
+    width: 120px;
+    height: 120px;
+    max-width: 120px;
+  }
+  .beer-cta-button {
+    font-size: 0.8rem;
+    padding: 11px 8px;
+    gap: 5px;
+  }
+  .mobile-tab-btn {
+    font-size: 0.65rem;
+  }
+  .mobile-center-compose-btn {
+    width: 42px;
+    height: 42px;
   }
 }
 
@@ -3502,6 +3780,10 @@ button {
 .beer-modal-card {
   width: 100%;
   max-width: 480px;
+  max-height: min(92vh, 760px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: #141a15;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
@@ -3655,6 +3937,7 @@ button {
 
 .beer-amount-pill {
   flex: 1;
+  min-width: 0;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #a2b0a5;
@@ -3743,6 +4026,8 @@ button {
 .beer-qr-image {
   width: 160px;
   height: 160px;
+  max-width: 160px;
+  aspect-ratio: 1 / 1;
   display: block;
   border-radius: 4px;
 }

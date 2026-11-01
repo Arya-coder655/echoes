@@ -20,6 +20,7 @@ export default function Navbar({
   onSelectCategory,
   onOpenComposer,
   onOpenAbout,
+  onOpenBeer,
   onOpenMixer,
   onOpenZenCinema,
   onOpenRitual,
@@ -243,6 +244,20 @@ export default function Navbar({
               <Info size={15} />
               <span>About & Sanctuary Safety</span>
             </button>
+
+            {onOpenBeer && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenBeer();
+                  setMobileMenuOpen(false);
+                }}
+                className="mobile-drawer-link mobile-beer-link"
+              >
+                <span>🍺</span>
+                <span>Meet the Creator (Arya More)</span>
+              </button>
+            )}
 
             <button
               onClick={() => {

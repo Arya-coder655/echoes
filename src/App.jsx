@@ -16,7 +16,6 @@ import WhisperingWellModal from './components/WhisperingWellModal';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import ReportModal from './components/ReportModal';
-import confetti from 'canvas-confetti';
 import { INITIAL_ECHOES } from './data/initialEchoes';
 import { soundscape } from './utils/audio';
 import {
@@ -321,6 +320,7 @@ export default function App() {
         onSelectCategory={setActiveCategory}
         onOpenComposer={() => setComposerOpen(true)}
         onOpenAbout={() => setAboutOpen(true)}
+        onOpenBeer={() => setBeerModalOpen(true)}
         onOpenMixer={() => setMixerOpen(true)}
         onOpenZenCinema={() => setZenCinemaOpen(true)}
         onOpenRitual={() => setRitualOpen(true)}
