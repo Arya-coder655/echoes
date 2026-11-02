@@ -128,7 +128,17 @@ export function validateWhisperContent(req, res, next) {
     req.body.name = name.trim().slice(0, 100);
   }
   if (category && typeof category === 'string') {
-    const validCategories = ['regret', 'last-words', 'unsent', 'themed', 'all'];
+    const validCategories = [
+      'regret',
+      'unsent',
+      'midnight-thoughts',
+      'healing-corner',
+      'random-chaos',
+      'last-words',
+      'love-notes',
+      'themed',
+      'all'
+    ];
     if (!validCategories.includes(category)) {
       req.body.category = 'regret';
     }

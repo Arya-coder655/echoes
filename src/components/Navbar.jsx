@@ -4,7 +4,6 @@ import {
   Flame, 
   Hourglass, 
   Mail, 
-  Palette, 
   Bookmark, 
   Info, 
   Plus, 
@@ -12,7 +11,11 @@ import {
   Compass, 
   Tv, 
   Menu, 
-  X 
+  X,
+  Moon,
+  HeartPulse,
+  Zap,
+  Heart
 } from 'lucide-react';
 
 export default function Navbar({
@@ -34,9 +37,12 @@ export default function Navbar({
   const navItems = [
     { id: 'all', label: 'All', icon: Sparkles },
     { id: 'regret', label: 'Regret', icon: Flame },
-    { id: 'last-words', label: 'Farewells', icon: Hourglass },
     { id: 'unsent', label: 'Unsent', icon: Mail },
-    { id: 'themed', label: 'Themed', icon: Palette },
+    { id: 'midnight-thoughts', label: 'Midnight', icon: Moon },
+    { id: 'healing-corner', label: 'Healing', icon: HeartPulse },
+    { id: 'random-chaos', label: 'Chaos', icon: Zap },
+    { id: 'last-words', label: 'Farewells', icon: Hourglass },
+    { id: 'love-notes', label: 'Love', icon: Heart },
     { id: 'bookmarks', label: 'Saved', icon: Bookmark, badge: bookmarkCount }
   ];
 

@@ -184,6 +184,62 @@ async function seedInitialData() {
       themeId: "rose-unspoken",
       timestamp: Date.now() - 1000 * 60 * 60 * 110,
       comments: []
+    },
+    {
+      id: "ECHO-70231",
+      name: "To: 3:00 AM Silence",
+      category: "midnight-thoughts",
+      message: "It's 3:14 AM and the whole city is asleep except my brain wondering what our lives would look like if we had just held on five minutes longer in that parking lot.",
+      image: "",
+      likes: 138,
+      shares: 42,
+      themeId: "midnight-sorrow",
+      timestamp: Date.now() - 1000 * 60 * 60 * 14,
+      comments: [
+        { id: "c8", text: "The midnight silence has a way of making old memories roar.", time: Date.now() - 1000 * 60 * 60 * 6 }
+      ]
+    },
+    {
+      id: "ECHO-80512",
+      name: "To: Anyone carrying heavy grief",
+      category: "healing-corner",
+      message: "Healing isn't linear. Some days you will feel completely at peace, and other days an old song will crack your chest open. Both days belong to your healing. Give yourself grace.",
+      image: "",
+      likes: 215,
+      shares: 68,
+      themeId: "emerald-peace",
+      timestamp: Date.now() - 1000 * 60 * 60 * 22,
+      comments: [
+        { id: "c9", text: "Reading this was like an exhale I didn't know I was holding.", time: Date.now() - 1000 * 60 * 60 * 8 }
+      ]
+    },
+    {
+      id: "ECHO-90344",
+      name: "To: My refrigerator at 2 AM",
+      category: "random-chaos",
+      message: "I opened the fridge looking for answers to my existential dread and left with shredded cheese eaten directly out of the bag in complete darkness. 10/10 coping mechanism.",
+      image: "",
+      likes: 182,
+      shares: 51,
+      themeId: "amber-nostalgia",
+      timestamp: Date.now() - 1000 * 60 * 60 * 28,
+      comments: [
+        { id: "c10", text: "Shredded cheese is universally therapeutic.", time: Date.now() - 1000 * 60 * 60 * 10 }
+      ]
+    },
+    {
+      id: "ECHO-95120",
+      name: "To: You, across the breakfast table",
+      category: "love-notes",
+      message: "Watching you laugh while you spill coffee on your favourite oversized sweater made me realize forever wouldn't be long enough with you. You make this heavy world feel feather-light.",
+      image: "",
+      likes: 247,
+      shares: 79,
+      themeId: "rose-unspoken",
+      timestamp: Date.now() - 1000 * 60 * 60 * 50,
+      comments: [
+        { id: "c11", text: "Pure poetry. Tell them this in person!", time: Date.now() - 1000 * 60 * 60 * 15 }
+      ]
     }
   ];
 

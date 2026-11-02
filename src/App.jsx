@@ -353,7 +353,17 @@ export default function App() {
 
   // Category counts
   const categoryCounts = useMemo(() => {
-    const counts = { all: 0, regret: 0, 'last-words': 0, unsent: 0, themed: 0 };
+    const counts = { 
+      all: 0, 
+      regret: 0, 
+      unsent: 0, 
+      'midnight-thoughts': 0, 
+      'healing-corner': 0, 
+      'random-chaos': 0, 
+      'last-words': 0, 
+      'love-notes': 0, 
+      themed: 0 
+    };
     const visible = echoes.filter((e) => !reportedIds.includes(e.id));
     counts.all = visible.length;
     visible.forEach((e) => {
@@ -457,8 +467,12 @@ export default function App() {
               <h2 className="feed-title">
                 {activeCategory === 'all' && 'The Universal Feed'}
                 {activeCategory === 'regret' && 'The Regret Wall'}
+                {activeCategory === 'unsent' && 'Unsent Letters'}
+                {activeCategory === 'midnight-thoughts' && 'Midnight Thoughts'}
+                {activeCategory === 'healing-corner' && 'Healing Corner'}
+                {activeCategory === 'random-chaos' && 'Random Chaos'}
                 {activeCategory === 'last-words' && 'The Last Words Archive'}
-                {activeCategory === 'unsent' && 'Unsent Letters & Confessions'}
+                {activeCategory === 'love-notes' && 'Love Notes'}
                 {activeCategory === 'themed' && 'Themed Reflections'}
                 {activeCategory === 'bookmarks' && 'Your Saved Echoes'}
               </h2>
@@ -629,9 +643,12 @@ export default function App() {
               </button>
               <ul className={`footer-links-list ${footerDropdowns.walls ? 'mobile-open' : ''}`}>
                 <li><button type="button" onClick={() => { setActiveCategory('regret'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Regret Wall</button></li>
-                <li><button type="button" onClick={() => { setActiveCategory('last-words'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Last Words Archive</button></li>
                 <li><button type="button" onClick={() => { setActiveCategory('unsent'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Unsent Letters</button></li>
-                <li><button type="button" onClick={() => { setActiveCategory('themed'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Themed Posts</button></li>
+                <li><button type="button" onClick={() => { setActiveCategory('midnight-thoughts'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Midnight Thoughts</button></li>
+                <li><button type="button" onClick={() => { setActiveCategory('healing-corner'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Healing Corner</button></li>
+                <li><button type="button" onClick={() => { setActiveCategory('random-chaos'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Random Chaos</button></li>
+                <li><button type="button" onClick={() => { setActiveCategory('last-words'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Last Words Archive</button></li>
+                <li><button type="button" onClick={() => { setActiveCategory('love-notes'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}>Love Notes</button></li>
               </ul>
             </div>
 

@@ -60,9 +60,13 @@ export default function EchoCard({
   const getCategoryTitle = (cat) => {
     switch (cat) {
       case 'regret': return 'Regret Wall';
+      case 'unsent': return 'Unsent Letters';
+      case 'midnight-thoughts': return 'Midnight Thoughts';
+      case 'healing-corner': return 'Healing Corner';
+      case 'random-chaos': return 'Random Chaos';
       case 'last-words': return 'Last Words';
-      case 'unsent': return 'Unsent Letter';
-      case 'themed': return 'Themed Post';
+      case 'love-notes': return 'Love Notes';
+      case 'themed': return 'Themed Reflection';
       default: return 'Echo';
     }
   };

@@ -291,7 +291,7 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
                   <div className="echo-card-header">
                     <div className="header-left">
                       <span className="echo-category-badge">
-                        {category === 'regret' ? 'Regret Wall' : category === 'last-words' ? 'Last Words' : category === 'unsent' ? 'Unsent Letter' : 'Themed Post'}
+                        {CATEGORIES.find((c) => c.id === category)?.label || 'Echo'}
                       </span>
                       <span className="echo-id-pill">#ECHO-PREVIEW</span>
                     </div>
