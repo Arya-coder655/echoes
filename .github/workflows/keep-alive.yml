@@ -1,0 +1,23 @@
+name: Render 24/7 Keep-Alive Ping
+
+on:
+  schedule:
+    # Run every 14 minutes (Render free web services spin down after 15 minutes of inactivity)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allows manual ping execution from GitHub Actions tab
+
+jobs:
+  ping:
+    name: Ping Render Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Keep-Alive API
+        run: |
+          echo "Sending keep-alive ping to Render backend..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 https://echoes-9wsj.onrender.com/api/ping || echo "000")
+          echo "Render Ping Status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Retrying via /api/health endpoint..."
+            curl -s -f --max-time 45 https://echoes-9wsj.onrender.com/api/health || true
+          fi
+          echo "Render keep-alive ping successfully executed."

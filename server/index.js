@@ -72,6 +72,16 @@ app.get('/api/health', (req, res) => {
 });
 
 /**
+ * Ultra-lightweight Keep-Alive Ping (Zero DB overhead)
+ * Used by GitHub Actions, UptimeRobot, and self-pinger to prevent Render spin-down.
+ */
+app.get('/api/ping', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('X-Render-Keep-Alive', 'active');
+  res.status(200).send('pong');
+});
+
+/**
  * Privacy Promise audit endpoint
  */
 app.get('/api/privacy', (req, res) => {
@@ -371,6 +381,7 @@ async function startServer() {
       console.log(`🌌 Echoes Sanctuary Server running on http://localhost:${PORT}`);
       console.log(`🐬 Connected to MySQL (Viewable in MySQL Workbench)`);
       console.log(`🔒 Privacy Promise Active: Zero PII logged to disk.`);
+      initKeepAlivePinger();
     });
   } catch (err) {
     console.error('⚠️ Could not connect to MySQL server:', err.message);
@@ -378,8 +389,40 @@ async function startServer() {
     // Start server anyway so frontend remains accessible
     app.listen(PORT, () => {
       console.log(`🌌 Echoes Sanctuary Server running on http://localhost:${PORT} (Offline/Fallback mode)`);
+      initKeepAlivePinger();
     });
   }
+}
+
+/**
+ * Render Free-Tier Self-Pinger (Runs every 12 minutes)
+ * Generates an external HTTP request to the public URL so Render never sleeps.
+ */
+function initKeepAlivePinger() {
+  // Only ping if running on Render or in production
+  const isRender = Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL || process.env.NODE_ENV === 'production');
+  if (!isRender && !process.env.ENABLE_KEEP_ALIVE) return;
+
+  const publicUrl = process.env.RENDER_EXTERNAL_URL || 'https://echoes-9wsj.onrender.com';
+  const pingUrl = `${publicUrl.replace(/\/+$/, '')}/api/ping`;
+  const intervalMs = 12 * 60 * 1000; // 12 minutes (Render spins down after 15m)
+
+  console.log(`⚡ Render Keep-Alive active: Pinging ${pingUrl} every 12 mins.`);
+
+  setInterval(async () => {
+    try {
+      const res = await fetch(pingUrl, {
+        headers: { 'User-Agent': 'EchoesSanctuary-KeepAlive/1.0' }
+      });
+      if (res.ok) {
+        console.log(`[Keep-Alive] ⚡ Successful ping at ${new Date().toLocaleTimeString()} — Server kept active.`);
+      } else {
+        console.warn(`[Keep-Alive] ⚠️ Ping returned HTTP ${res.status}`);
+      }
+    } catch (err) {
+      console.warn(`[Keep-Alive] ⚠️ Ping error:`, err.message);
+    }
+  }, intervalMs);
 }
 
 startServer();

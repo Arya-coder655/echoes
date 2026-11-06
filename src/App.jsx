@@ -156,6 +156,15 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
+  // Proactive background keep-alive ping on page load
+  useEffect(() => {
+    const pingEndpoint = window.location.hostname.includes('github.io')
+      ? 'https://echoes-9wsj.onrender.com/api/ping'
+      : '/api/ping';
+
+    fetch(pingEndpoint).catch(() => {});
+  }, []);
+
   // Real rain & soundscape state
   const [isAudioPlaying, setIsAudioPlaying] = useState(soundscape.isPlaying);
   const [sessionDuration, setSessionDuration] = useState('0 min');

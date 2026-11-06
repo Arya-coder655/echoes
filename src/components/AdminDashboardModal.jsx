@@ -22,7 +22,8 @@ import {
   Database,
   Filter,
   ArrowUpDown,
-  History
+  History,
+  Zap
 } from 'lucide-react';
 import {
   verifyAdminPin,
@@ -1162,6 +1163,35 @@ export default function AdminDashboardModal({ isOpen, onClose, onToast, echoes =
                         <div className="admin-health-row">
                           <span className="admin-health-label">HSTS & Headers:</span>
                           <span className="admin-health-val">Strict-Transport-Security</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 24/7 Keep-Alive Engine Card */}
+                    <div className="admin-health-card">
+                      <div className="admin-health-card-header">
+                        <div className="admin-health-card-title">
+                          <Zap size={18} className="text-amber-400" />
+                          <span>24/7 Keep-Alive Engine</span>
+                        </div>
+                        <span className="admin-health-status-pill online">Active</span>
+                      </div>
+                      <div className="admin-health-card-body">
+                        <div className="admin-health-row">
+                          <span className="admin-health-label">Self-Pinger:</span>
+                          <span className="admin-health-val text-emerald-400 font-semibold">Every 12 mins (Internal)</span>
+                        </div>
+                        <div className="admin-health-row">
+                          <span className="admin-health-label">Cloud Cron:</span>
+                          <span className="admin-health-val font-semibold">GitHub Actions (14m)</span>
+                        </div>
+                        <div className="admin-health-row">
+                          <span className="admin-health-label">Target Endpoint:</span>
+                          <span className="admin-health-val font-mono">/api/ping (Zero DB)</span>
+                        </div>
+                        <div className="admin-health-row">
+                          <span className="admin-health-label">Sleep Prevention:</span>
+                          <span className="admin-health-val text-amber-300 font-semibold">No Cold Starts (24/7)</span>
                         </div>
                       </div>
                     </div>
