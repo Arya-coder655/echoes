@@ -15,7 +15,7 @@ import {
   recordShareInDb,
   addCommentInDb
 } from './utils/api';
-import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown } from 'lucide-react';
 
 // Code-split / Lazy-loaded Modals & Secondary Experiences (Loaded on-demand)
 const EchoComposer = lazy(() => import('./components/EchoComposer'));
@@ -403,7 +403,14 @@ export default function App() {
   const handleOpenWell = useCallback(() => setWellOpen(true), []);
   const handleOpenAbout = useCallback(() => setAboutOpen(true), []);
   const handleOpenBeer = useCallback(() => setBeerModalOpen(true), []);
-  const handleOpenAdmin = useCallback(() => setAdminOpen(true), []);
+  const handleCloseAdmin = useCallback(() => {
+    setAdminOpen(false);
+    if (window.location.hash === '#admin' || window.location.hash === '#guardian') {
+      try {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      } catch {}
+    }
+  }, []);
 
   const handleOpenComments = useCallback((targetEcho) => setCommentsEcho(targetEcho), []);
   const handleOpenShare = useCallback((targetEcho) => setShareEcho(targetEcho), []);
@@ -726,7 +733,6 @@ export default function App() {
                 <li><button type="button" onClick={handleOpenAbout}>Why This Space Exists</button></li>
                 <li><button type="button" onClick={handleOpenAbout}>100% Anonymous Promise</button></li>
                 <li><button type="button" onClick={handleOpenAbout}>Sanctuary Principles</button></li>
-                <li><button type="button" onClick={handleOpenAdmin}>Guardian Portal</button></li>
               </ul>
             </div>
           </div>
@@ -762,16 +768,6 @@ export default function App() {
               >
                 <Info size={14} />
                 <span>About Us</span>
-              </button>
-              <button 
-                type="button"
-                onClick={handleOpenAdmin}
-                className="footer-about-pill-btn footer-guardian-btn"
-                aria-label="Guardian Portal"
-                title="Moderation & Guardian Portal"
-              >
-                <ShieldCheck size={14} />
-                <span>Guardian</span>
               </button>
               <button onClick={scrollToTop} className="back-to-top-btn" aria-label="Back to top">
                 <ArrowUp size={16} />
@@ -903,12 +899,12 @@ export default function App() {
         </Suspense>
       )}
 
-      {/* Sanctuary Guardian / Admin Dashboard Modal */}
+      {/* Sanctuary Guardian / Admin Dashboard Modal (Accessible via #admin in URL) */}
       {adminOpen && (
         <Suspense fallback={<SanctuaryModalFallback />}>
           <AdminDashboardModal
             isOpen={adminOpen}
-            onClose={() => setAdminOpen(false)}
+            onClose={handleCloseAdmin}
             onToast={showToast}
             echoes={echoes}
           />

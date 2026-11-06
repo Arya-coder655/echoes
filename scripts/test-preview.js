@@ -169,8 +169,9 @@ server.listen(PORT, async () => {
         closeSelector: '.report-close-btn'
       },
       {
-        name: '11. Sanctuary Guardian / Admin Dashboard',
-        openSelector: 'button[aria-label="Guardian Portal"]',
+        name: '11. Sanctuary Guardian (#admin URL Hash)',
+        isHashTrigger: true,
+        hash: '#admin',
         expectedSelector: '.admin-modal-backdrop',
         closeSelector: '.admin-close-btn'
       }
@@ -179,19 +180,32 @@ server.listen(PORT, async () => {
     let passedCount = 0;
 
     for (const tc of testCases) {
-      // Click open
-      const openResult = await evalCode(`
-        (function() {
-          const btn = document.querySelector('${tc.openSelector}');
-          if (!btn) return 'TRIGGER_NOT_FOUND';
-          btn.click();
-          return 'TRIGGER_CLICKED';
-        })()
-      `);
+      if (tc.isHashTrigger) {
+        // First verify button is removed from bottom/footer
+        const btnExists = await evalCode(`Boolean(document.querySelector('button[aria-label="Guardian Portal"]'))`);
+        if (btnExists) {
+          console.error(`❌ ${tc.name}: Guardian button is STILL in footer! Expected it to be removed.`);
+        } else {
+          console.log(`✅ ${tc.name}: Verified Guardian button completely hidden/removed from footer!`);
+        }
 
-      if (openResult !== 'TRIGGER_CLICKED') {
-        console.error(`❌ ${tc.name}: Trigger button not found ('${tc.openSelector}')`);
-        continue;
+        // Trigger via #admin in URL
+        await evalCode(`window.location.hash = '${tc.hash}'`);
+      } else {
+        // Click open
+        const openResult = await evalCode(`
+          (function() {
+            const btn = document.querySelector('${tc.openSelector}');
+            if (!btn) return 'TRIGGER_NOT_FOUND';
+            btn.click();
+            return 'TRIGGER_CLICKED';
+          })()
+        `);
+
+        if (openResult !== 'TRIGGER_CLICKED') {
+          console.error(`❌ ${tc.name}: Trigger button not found ('${tc.openSelector}')`);
+          continue;
+        }
       }
 
       // Wait 400ms for lazy load & Suspense transition
