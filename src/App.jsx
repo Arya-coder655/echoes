@@ -944,6 +944,7 @@ export default function App() {
             onClose={handleCloseAdmin}
             onToast={showToast}
             echoes={echoes}
+            activeSouls={activeSouls}
           />
         </Suspense>
       )}

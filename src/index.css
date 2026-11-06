@@ -5854,6 +5854,275 @@ button {
   color: #fbbf24;
 }
 
+/* ==========================================================================
+   Guardian Souls Analytics & Chart Styles
+   ========================================================================== */
+.admin-analytics-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: modalFadeIn 0.25s ease-out;
+}
+
+.analytics-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.analytics-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.analytics-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.analytics-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.analytics-card-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.live-pulsing-badge {
+  font-size: 0.7rem;
+  color: #10b981;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.analytics-card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analytics-card-sub {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Chart Container */
+.analytics-chart-container {
+  background: rgba(18, 18, 26, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analytics-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.analytics-chart-heading {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.analytics-chart-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 3px 0 0;
+}
+
+.chart-tooltip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fef3c7;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.chart-tooltip-badge b {
+  color: #fbbf24;
+}
+
+.chart-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.chart-live-badge b {
+  color: #ffffff;
+}
+
+.chart-live-badge .live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.svg-chart-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+.analytics-svg-chart {
+  width: 100%;
+  height: 190px;
+  overflow: visible;
+}
+
+.chart-x-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 30px 0;
+}
+
+.chart-x-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.chart-x-label.active {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+/* Details Grid */
+.analytics-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.analytics-detail-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detail-card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.category-affinity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.category-affinity-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cat-row-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+
+.cat-row-name {
+  color: #cbd5e1;
+}
+
+.cat-row-pct {
+  color: var(--text-muted);
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.cat-progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.cat-progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rhythm-insights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rhythm-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.rhythm-icon {
+  font-size: 1.15rem;
+  margin-top: 1px;
+}
+
+.rhythm-heading {
+  font-size: 0.79rem;
+  color: #f1f5f9;
+  display: block;
+}
+
+.rhythm-text {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+  line-height: 1.4;
+}
+
+
 
 
 
