@@ -4,16 +4,34 @@ import path from 'path';
 import { spawn } from 'child_process';
 
 const PORT = 5188;
-const htmlFile = path.resolve('scripts/generate-banner.html');
+const scriptsDir = path.resolve('scripts');
+const publicDir = path.resolve('public');
 const outputFile = path.resolve('public/og-banner.png');
 
+const mimeTypes = {
+  '.html': 'text/html',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml'
+};
+
 const server = http.createServer((req, res) => {
-  if (fs.existsSync(htmlFile)) {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    fs.createReadStream(htmlFile).pipe(res);
+  let reqPath = req.url.split('?')[0];
+  if (reqPath === '/' || reqPath === '') reqPath = '/generate-banner.html';
+
+  let filePath = path.join(scriptsDir, reqPath);
+  if (!fs.existsSync(filePath)) {
+    filePath = path.join(publicDir, reqPath);
+  }
+
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    const ext = path.extname(filePath).toLowerCase();
+    res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+    fs.createReadStream(filePath).pipe(res);
   } else {
     res.writeHead(404);
-    res.end('Not Found');
+    res.end('Not Found: ' + reqPath);
   }
 });
 
@@ -28,7 +46,7 @@ server.listen(PORT, async () => {
     '--hide-scrollbars',
     '--no-sandbox',
     '--disable-gpu',
-    `http://localhost:${PORT}`
+    `http://localhost:${PORT}/generate-banner.html`
   ]);
 
   await new Promise(r => setTimeout(r, 1500));
@@ -76,13 +94,21 @@ server.listen(PORT, async () => {
       mobile: false
     });
 
-    // Wait for document.fonts.ready and animations
+    // Wait for fonts and all images to complete loading
     await sendCommand('Runtime.evaluate', {
-      expression: 'document.fonts.ready',
+      expression: `
+        Promise.all([
+          document.fonts.ready,
+          ...Array.from(document.images).map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(resolve => { img.onload = img.onerror = resolve; });
+          })
+        ])
+      `,
       awaitPromise: true
     });
 
-    // Wait an extra second for layout and rendering stability
+    // Extra delay for CSS renders, glows, and filter effects
     await new Promise(r => setTimeout(r, 1500));
 
     const screenshotRes = await sendCommand('Page.captureScreenshot', {
