@@ -136,8 +136,9 @@ try {
       closeSelector: '.report-close-btn'
     },
     {
-      name: '11. Sanctuary Guardian / Admin Dashboard',
-      openSelector: 'button[aria-label="Guardian Portal"]',
+      name: '11. Sanctuary Guardian (Stealth via #admin URL Hash)',
+      isHashTrigger: true,
+      hash: '#admin',
       expectedSelector: '.admin-modal-backdrop',
       closeSelector: '.admin-close-btn'
     }
@@ -146,18 +147,31 @@ try {
   let passed = 0;
 
   for (const tc of testCases) {
-    const openResult = await evalCode(`
-      (function() {
-        const btn = document.querySelector('${tc.openSelector}');
-        if (!btn) return 'TRIGGER_NOT_FOUND';
-        btn.click();
-        return 'TRIGGER_CLICKED';
-      })()
-    `);
+    if (tc.isHashTrigger) {
+      // Verify Guardian button is completely removed from footer
+      const btnExists = await evalCode(`Boolean(document.querySelector('button[aria-label="Guardian Portal"]'))`);
+      if (btnExists) {
+        console.error(`❌ ${tc.name}: Guardian button still visible in footer!`);
+      } else {
+        console.log(`✅ ${tc.name}: Verified Guardian button completely hidden/removed from public UI!`);
+      }
 
-    if (openResult !== 'TRIGGER_CLICKED') {
-      console.error(`❌ ${tc.name}: Trigger button not found ('${tc.openSelector}')`);
-      continue;
+      // Trigger stealth access via URL hash
+      await evalCode(`window.location.hash = '${tc.hash}'`);
+    } else {
+      const openResult = await evalCode(`
+        (function() {
+          const btn = document.querySelector('${tc.openSelector}');
+          if (!btn) return 'TRIGGER_NOT_FOUND';
+          btn.click();
+          return 'TRIGGER_CLICKED';
+        })()
+      `);
+
+      if (openResult !== 'TRIGGER_CLICKED') {
+        console.error(`❌ ${tc.name}: Trigger button not found ('${tc.openSelector}')`);
+        continue;
+      }
     }
 
     // Wait for network chunk & Suspense transition
