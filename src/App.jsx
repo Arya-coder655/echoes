@@ -16,6 +16,7 @@ import WhisperingWellModal from './components/WhisperingWellModal';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import ReportModal from './components/ReportModal';
+import AdminDashboardModal from './components/AdminDashboardModal';
 import confetti from 'canvas-confetti';
 import { INITIAL_ECHOES } from './data/initialEchoes';
 import { soundscape } from './utils/audio';
@@ -26,7 +27,7 @@ import {
   recordShareInDb,
   addCommentInDb
 } from './utils/api';
-import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown } from 'lucide-react';
+import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown, ShieldCheck } from 'lucide-react';
 
 const STORAGE_KEY_POSTS = 'echoes_of_heart_posts_v2';
 const STORAGE_KEY_BOOKMARKS = 'echoes_of_heart_bookmarks_v2';
@@ -90,6 +91,7 @@ export default function App() {
   const [zenCinemaOpen, setZenCinemaOpen] = useState(false);
   const [ritualOpen, setRitualOpen] = useState(false);
   const [wellOpen, setWellOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [reportEchoTarget, setReportEchoTarget] = useState(null);
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -140,6 +142,18 @@ export default function App() {
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
     };
+  }, []);
+
+  // Listen for #admin or #guardian in URL to open Guardian Portal
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === '#admin' || window.location.hash === '#guardian') {
+        setAdminOpen(true);
+      }
+    };
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
   // Real rain & soundscape state
@@ -668,6 +682,7 @@ export default function App() {
                 <li><button type="button" onClick={() => setAboutOpen(true)}>Why This Space Exists</button></li>
                 <li><button type="button" onClick={() => setAboutOpen(true)}>100% Anonymous Promise</button></li>
                 <li><button type="button" onClick={() => setAboutOpen(true)}>Sanctuary Principles</button></li>
+                <li><button type="button" onClick={() => setAdminOpen(true)}>Guardian Portal</button></li>
               </ul>
             </div>
           </div>
@@ -703,6 +718,16 @@ export default function App() {
               >
                 <Info size={14} />
                 <span>About Us</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => setAdminOpen(true)}
+                className="footer-about-pill-btn footer-guardian-btn"
+                aria-label="Guardian Portal"
+                title="Moderation & Guardian Portal"
+              >
+                <ShieldCheck size={14} />
+                <span>Guardian</span>
               </button>
               <button onClick={scrollToTop} className="back-to-top-btn" aria-label="Back to top">
                 <ArrowUp size={16} />
@@ -792,6 +817,13 @@ export default function App() {
         onClose={() => setReportEchoTarget(null)}
         onToast={showToast}
         onReportSubmitted={handleReportSubmitted}
+      />
+
+      {/* Sanctuary Guardian / Admin Dashboard Modal */}
+      <AdminDashboardModal
+        isOpen={adminOpen}
+        onClose={() => setAdminOpen(false)}
+        onToast={showToast}
       />
 
       {/* Minimal Sad Reaction Toast */}

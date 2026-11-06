@@ -99,3 +99,95 @@ export async function reportEchoInDb(id, reason, details = '') {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Admin: Verify Guardian PIN
+ */
+export async function verifyAdminPin(pin) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin })
+    });
+    const json = await res.json();
+    return { ok: res.ok, data: json };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Fetch moderation overview & stats
+ */
+export async function fetchAdminOverview(pin) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/overview`, {
+      headers: {
+        'x-admin-key': pin
+      }
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Restore reported echo
+ */
+export async function restoreEchoAsAdmin(id, pin) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/echoes/${id}/restore`, {
+      method: 'POST',
+      headers: {
+        'x-admin-key': pin
+      }
+    });
+    const json = await res.json();
+    return { ok: res.ok, data: json };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Permanently delete echo
+ */
+export async function deleteEchoAsAdmin(id, pin) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/echoes/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'x-admin-key': pin
+      }
+    });
+    const json = await res.json();
+    return { ok: res.ok, data: json };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Permanently delete comment
+ */
+export async function deleteCommentAsAdmin(id, pin) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/comments/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'x-admin-key': pin
+      }
+    });
+    const json = await res.json();
+    return { ok: res.ok, data: json };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}

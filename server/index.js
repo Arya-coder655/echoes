@@ -14,7 +14,11 @@ import {
   incrementShare,
   addComment,
   reportEcho,
-  exportDatabaseSnapshot
+  exportDatabaseSnapshot,
+  getAdminOverview,
+  restoreEcho,
+  deleteEchoPermanently,
+  deleteCommentPermanently
 } from './db.js';
 import {
   whisperRateLimiter,
@@ -227,6 +231,92 @@ app.post('/api/echoes/:id/report', async (req, res) => {
   } catch (err) {
     console.error('Error reporting echo:', err);
     res.status(500).json({ error: 'Failed to submit report.' });
+  }
+});
+
+// -------------------------------------------------------------
+// Admin & Moderation Endpoints (Protected by Guardian Key)
+// -------------------------------------------------------------
+
+/**
+ * Middleware: Verify Admin Secret PIN
+ */
+function requireAdminAuth(req, res, next) {
+  const adminPin = (process.env.ADMIN_PIN || 'arya2026').trim();
+  const providedPin = (
+    req.headers['x-admin-key'] ||
+    req.body?.pin ||
+    req.query?.pin ||
+    ''
+  ).toString().trim();
+
+  if (!providedPin || providedPin !== adminPin) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid Guardian Key' });
+  }
+  next();
+}
+
+/**
+ * Admin: Verify Guardian PIN
+ */
+app.post('/api/admin/verify', (req, res) => {
+  const adminPin = (process.env.ADMIN_PIN || 'arya2026').trim();
+  const { pin } = req.body || {};
+  if (pin && pin.toString().trim() === adminPin) {
+    return res.json({ success: true, message: 'Guardian key verified' });
+  }
+  return res.status(401).json({ success: false, error: 'Incorrect Guardian PIN' });
+});
+
+/**
+ * Admin: Fetch full sanctuary overview & moderation queue
+ */
+app.get('/api/admin/overview', requireAdminAuth, async (req, res) => {
+  try {
+    const overview = await getAdminOverview();
+    res.json(overview);
+  } catch (err) {
+    console.error('Error in /api/admin/overview:', err);
+    res.status(500).json({ error: 'Failed to load admin overview.' });
+  }
+});
+
+/**
+ * Admin: Restore reported echo back to public sanctuary
+ */
+app.post('/api/admin/echoes/:id/restore', requireAdminAuth, async (req, res) => {
+  try {
+    const result = await restoreEcho(req.params.id);
+    res.json({ success: true, message: 'Echo restored to sanctuary', result });
+  } catch (err) {
+    console.error('Error restoring echo:', err);
+    res.status(500).json({ error: 'Failed to restore echo.' });
+  }
+});
+
+/**
+ * Admin: Permanently delete an echo
+ */
+app.delete('/api/admin/echoes/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const result = await deleteEchoPermanently(req.params.id);
+    res.json({ success: true, message: 'Echo permanently deleted', result });
+  } catch (err) {
+    console.error('Error deleting echo:', err);
+    res.status(500).json({ error: 'Failed to delete echo.' });
+  }
+});
+
+/**
+ * Admin: Permanently delete a comment
+ */
+app.delete('/api/admin/comments/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const result = await deleteCommentPermanently(req.params.id);
+    res.json({ success: true, message: 'Comment permanently deleted', result });
+  } catch (err) {
+    console.error('Error deleting comment:', err);
+    res.status(500).json({ error: 'Failed to delete comment.' });
   }
 });
 

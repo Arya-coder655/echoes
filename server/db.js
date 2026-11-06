@@ -484,3 +484,126 @@ export async function exportDatabaseSnapshot() {
     }
   };
 }
+
+/**
+ * Admin: Get sanctuary overview, stats, reported items & recent activity
+ */
+export async function getAdminOverview() {
+  const [echoStats] = await pool.query(`
+    SELECT 
+      COUNT(*) as totalEchoes,
+      SUM(CASE WHEN reported = 1 OR report_count > 0 THEN 1 ELSE 0 END) as reportedCount,
+      COALESCE(SUM(likes), 0) as totalLikes,
+      COALESCE(SUM(shares), 0) as totalShares
+    FROM echoes
+  `);
+
+  const [commentStats] = await pool.query('SELECT COUNT(*) as totalComments FROM comments');
+  const [reportStats] = await pool.query('SELECT COUNT(*) as totalReports FROM reports');
+
+  // Fetch all reported echoes with associated reports
+  const [reportedRows] = await pool.query(
+    'SELECT * FROM echoes WHERE reported = 1 OR report_count > 0 ORDER BY timestamp DESC'
+  );
+
+  const [allReports] = await pool.query(
+    'SELECT * FROM reports ORDER BY timestamp DESC'
+  );
+
+  const reportedEchoes = reportedRows.map((echo) => {
+    const echoReports = allReports.filter((r) => r.echo_id === echo.id);
+    return {
+      id: echo.id,
+      name: echo.name,
+      category: echo.category,
+      message: echo.message,
+      image: echo.image || '',
+      likes: echo.likes || 0,
+      shares: echo.shares || 0,
+      themeId: echo.themeId,
+      timestamp: Number(echo.timestamp),
+      reported: Boolean(echo.reported),
+      report_count: Number(echo.report_count || 0),
+      reports: echoReports.map((r) => ({
+        id: r.id,
+        reason: r.reason,
+        details: r.details || '',
+        timestamp: Number(r.timestamp)
+      }))
+    };
+  });
+
+  // Fetch recent echoes (up to 100)
+  const [recentRows] = await pool.query(
+    'SELECT * FROM echoes ORDER BY timestamp DESC LIMIT 100'
+  );
+  const recentEchoes = recentRows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    message: row.message,
+    image: row.image || '',
+    likes: row.likes || 0,
+    shares: row.shares || 0,
+    themeId: row.themeId,
+    timestamp: Number(row.timestamp),
+    reported: Boolean(row.reported),
+    report_count: Number(row.report_count || 0)
+  }));
+
+  // Fetch recent 50 comments with echo snippet
+  const [recentComments] = await pool.query(`
+    SELECT c.id, c.echo_id, c.text, c.timestamp, e.message as echoSnippet, e.name as echoName
+    FROM comments c
+    LEFT JOIN echoes e ON c.echo_id = e.id
+    ORDER BY c.timestamp DESC
+    LIMIT 50
+  `);
+
+  return {
+    stats: {
+      totalEchoes: Number(echoStats[0]?.totalEchoes || 0),
+      reportedCount: Number(echoStats[0]?.reportedCount || 0),
+      totalComments: Number(commentStats[0]?.totalComments || 0),
+      totalReports: Number(reportStats[0]?.totalReports || 0),
+      totalLikes: Number(echoStats[0]?.totalLikes || 0),
+      totalShares: Number(echoStats[0]?.totalShares || 0)
+    },
+    reportedEchoes,
+    recentEchoes,
+    recentComments: recentComments.map((c) => ({
+      id: c.id,
+      echoId: c.echo_id,
+      text: c.text,
+      timestamp: Number(c.timestamp),
+      echoSnippet: c.echoSnippet || '',
+      echoName: c.echoName || ''
+    }))
+  };
+}
+
+/**
+ * Admin: Restore a reported echo back to the public sanctuary
+ */
+export async function restoreEcho(echoId) {
+  await pool.query('UPDATE echoes SET reported = 0, report_count = 0 WHERE id = ?', [echoId]);
+  await pool.query('DELETE FROM reports WHERE echo_id = ?', [echoId]);
+  return { success: true, id: echoId };
+}
+
+/**
+ * Admin: Permanently delete an echo (cascades to comments and reports)
+ */
+export async function deleteEchoPermanently(echoId) {
+  await pool.query('DELETE FROM echoes WHERE id = ?', [echoId]);
+  return { success: true, id: echoId };
+}
+
+/**
+ * Admin: Permanently delete a comment
+ */
+export async function deleteCommentPermanently(commentId) {
+  await pool.query('DELETE FROM comments WHERE id = ?', [commentId]);
+  return { success: true, id: commentId };
+}
+
