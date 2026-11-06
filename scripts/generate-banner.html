@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Echoes OG Banner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Playfair+Display:ital,wght@0,600;1,500&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      width: 1200px;
+      height: 630px;
+      overflow: hidden;
+      background: #08080c;
+      font-family: 'Poppins', sans-serif;
+      color: #ffffff;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 60px 70px;
+    }
+
+    /* Ambient background glows */
+    .glow-left {
+      position: absolute;
+      top: -100px;
+      left: -100px;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(252, 41, 4, 0.28) 0%, rgba(251, 146, 60, 0.12) 40%, transparent 70%);
+      filter: blur(60px);
+      pointer-events: none;
+    }
+    .glow-right {
+      position: absolute;
+      bottom: -120px;
+      right: -80px;
+      width: 650px;
+      height: 650px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(168, 85, 247, 0.12) 40%, transparent 70%);
+      filter: blur(70px);
+      pointer-events: none;
+    }
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    /* Floating stars/embers */
+    .ember {
+      position: absolute;
+      border-radius: 50%;
+      background: #fbbf24;
+      opacity: 0.5;
+      box-shadow: 0 0 10px #fbbf24;
+    }
+
+    /* Left Branding Column */
+    .left-col {
+      position: relative;
+      z-index: 2;
+      max-width: 640px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(252, 41, 4, 0.12);
+      border: 1px solid rgba(252, 41, 4, 0.35);
+      padding: 7px 16px;
+      border-radius: 999px;
+      width: fit-content;
+    }
+    .brand-badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fc2904;
+      box-shadow: 0 0 10px #fc2904;
+    }
+    .brand-badge span {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #fb923c;
+    }
+
+    .hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: 50px;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+    }
+    .hero-title-gradient {
+      background: linear-gradient(135deg, #fb923c 0%, #f43f5e 50%, #e11d48 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-weight: 600;
+    }
+
+    .hero-desc {
+      font-size: 17px;
+      line-height: 1.6;
+      color: #94a3b8;
+      font-weight: 300;
+    }
+
+    /* Feature tags pill strip */
+    .feature-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #cbd5e1;
+      font-weight: 400;
+    }
+    .pill-icon {
+      font-size: 14px;
+    }
+
+    /* Right Preview Column (Aesthetic Card) */
+    .right-col {
+      position: relative;
+      z-index: 2;
+      width: 410px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .card-preview {
+      width: 100%;
+      background: rgba(18, 18, 26, 0.85);
+      border: 1px solid rgba(252, 41, 4, 0.28);
+      border-radius: 20px;
+      padding: 30px 28px;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.7),
+        0 0 35px rgba(252, 41, 4, 0.15);
+      backdrop-filter: blur(20px);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-tag {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fb923c;
+      background: rgba(251, 146, 60, 0.12);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .card-id {
+      font-size: 12px;
+      color: #64748b;
+      font-family: monospace;
+    }
+
+    .card-recipient {
+      font-size: 14px;
+      color: #e2e8f0;
+      font-style: italic;
+      font-family: 'Playfair Display', serif;
+    }
+
+    .card-quote-mark {
+      font-family: 'Playfair Display', serif;
+      font-size: 54px;
+      line-height: 24px;
+      color: rgba(252, 41, 4, 0.6);
+      margin-bottom: -10px;
+    }
+
+    .card-message {
+      font-size: 16px;
+      line-height: 1.55;
+      color: #f1f5f9;
+      font-weight: 300;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 14px;
+      margin-top: 6px;
+    }
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .card-action-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .card-watermark {
+      font-size: 11px;
+      color: #f43f5e;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .bottom-url-badge {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #94a3b8;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .bottom-url-badge b {
+      color: #ffffff;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-left"></div>
+  <div class="glow-right"></div>
+  <div class="grid-overlay"></div>
+
+  <!-- Decorative Embers -->
+  <div class="ember" style="width: 4px; height: 4px; top: 120px; left: 160px; opacity: 0.4;"></div>
+  <div class="ember" style="width: 6px; height: 6px; top: 240px; left: 620px; opacity: 0.7;"></div>
+  <div class="ember" style="width: 3px; height: 3px; bottom: 150px; left: 480px; opacity: 0.5;"></div>
+  <div class="ember" style="width: 5px; height: 5px; top: 90px; right: 280px; opacity: 0.6;"></div>
+
+  <!-- Left Column -->
+  <div class="left-col">
+    <div class="brand-badge">
+      <div class="brand-badge-dot"></div>
+      <span>Anonymous Emotional Sanctuary</span>
+    </div>
+
+    <h1 class="hero-title">
+      Where Unspoken Words<br>
+      <span class="hero-title-gradient">Finally Find Peace.</span>
+    </h1>
+
+    <p class="hero-desc">
+      A serene, judgment-free space to release silent regrets, unposted love letters, and sacred farewells. 100% private, anonymous, and unburdened.
+    </p>
+
+    <div class="feature-tags">
+      <div class="pill"><span class="pill-icon">🕊️</span> 100% Anonymous</div>
+      <div class="pill"><span class="pill-icon">🌧️</span> Rain Sanctuary</div>
+      <div class="pill"><span class="pill-icon">🔥</span> Sacred Hearth Ritual</div>
+      <div class="pill"><span class="pill-icon">🌌</span> Zen Cinema</div>
+      <div class="pill"><span class="pill-icon">🕯️</span> Whispering Well</div>
+    </div>
+  </div>
+
+  <!-- Right Column -->
+  <div class="right-col">
+    <div class="card-preview">
+      <div class="card-top">
+        <span class="card-tag">Regret Wall</span>
+        <span class="card-id">#ECHO-8902</span>
+      </div>
+      <div class="card-recipient">To: The one I let slip away</div>
+      <div class="card-quote-mark">“</div>
+      <p class="card-message">
+        Some words are too heavy for tongues to speak, yet too loud for hearts to hold in silence. I hope the universe delivers the peace I never gave you.
+      </p>
+      <div class="card-footer">
+        <div class="card-actions">
+          <div class="card-action-item">❤️ 1.4k felt</div>
+          <div class="card-action-item">💬 42 echoes</div>
+        </div>
+        <div class="card-watermark">ECHOES</div>
+      </div>
+    </div>
+
+    <div class="bottom-url-badge">
+      <span>🌐</span>
+      <span>arya-coder655.github.io/<b>echoes</b></span>
+    </div>
+  </div>
+</body>
+</html>
