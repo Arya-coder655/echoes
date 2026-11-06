@@ -664,16 +664,6 @@ export default function App() {
               <p className="footer-quote">
                 “Every unspoken word carries a story waiting to be heard. Turn your quietest ache into a bridge of connection.”
               </p>
-              {/* About Us Button in Footer */}
-              <button 
-                type="button"
-                onClick={handleOpenAbout}
-                className="footer-about-btn"
-                title="Learn about Echoes & the Anonymous Sanctuary"
-              >
-                <Info size={15} />
-                <span>About Us</span>
-              </button>
             </div>
 
             {/* Sanctuary Experiences Accordion */}
