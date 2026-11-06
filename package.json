@@ -13,6 +13,7 @@
     "db:view": "node scripts/view-posts.js",
     "build": "vite build",
     "deploy:gh": "npm run build && node scripts/deploy-gh-pages.js",
+    "test:preview": "npm run build && node scripts/test-preview.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },
