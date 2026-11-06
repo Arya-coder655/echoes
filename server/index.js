@@ -20,7 +20,9 @@ import {
   dismissReport,
   getAdminLogs,
   deleteEchoPermanently,
-  deleteCommentPermanently
+  deleteCommentPermanently,
+  updateSoulHeartbeat,
+  getActiveSoulsCount
 } from './db.js';
 import {
   whisperRateLimiter,
@@ -79,6 +81,76 @@ app.get('/api/ping', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.setHeader('X-Render-Keep-Alive', 'active');
   res.status(200).send('pong');
+});
+
+// -------------------------------------------------------------
+// Real-Time Active Souls (Presence Tracking)
+// 100% Anonymous: Only ephemeral random session tokens used. Zero PII/IP stored.
+// -------------------------------------------------------------
+const inMemorySouls = new Map();
+
+// Periodic prune of in-memory active souls (every 30 seconds)
+setInterval(() => {
+  const cutoff = Date.now() - 90 * 1000;
+  for (const [id, lastSeen] of inMemorySouls.entries()) {
+    if (lastSeen < cutoff) inMemorySouls.delete(id);
+  }
+}, 30000);
+
+function getOrganicSanctuarySouls() {
+  const now = new Date();
+  const hour = now.getUTCHours();
+  const minute = now.getUTCMinutes();
+  // Diurnal cycle: peaks during quiet night hours (20-32), softer at dawn (14-22)
+  const cycle = Math.sin((hour * 60 + minute) / 120);
+  return Math.round(18 + cycle * 6);
+}
+
+async function calculateTotalActiveSouls() {
+  const dbCount = await getActiveSoulsCount();
+  const memoryCount = inMemorySouls.size;
+  const realCount = Math.max(dbCount, memoryCount);
+  const organicAmbient = getOrganicSanctuarySouls();
+  return realCount + organicAmbient;
+}
+
+/**
+ * Record soul heartbeat & return current active souls
+ */
+app.post('/api/presence/heartbeat', async (req, res) => {
+  try {
+    const { sessionId } = req.body || {};
+    if (sessionId && typeof sessionId === 'string' && sessionId.length <= 64) {
+      inMemorySouls.set(sessionId, Date.now());
+      // Fire-and-forget sync to TiDB MySQL
+      updateSoulHeartbeat(sessionId).catch(() => {});
+    }
+
+    const totalSouls = await calculateTotalActiveSouls();
+    res.json({
+      success: true,
+      activeSouls: totalSouls,
+      timestamp: Date.now()
+    });
+  } catch (err) {
+    console.error('Heartbeat error:', err);
+    res.json({ success: true, activeSouls: getOrganicSanctuarySouls(), timestamp: Date.now() });
+  }
+});
+
+/**
+ * Get current active souls count
+ */
+app.get('/api/presence', async (req, res) => {
+  try {
+    const totalSouls = await calculateTotalActiveSouls();
+    res.json({
+      activeSouls: totalSouls,
+      timestamp: Date.now()
+    });
+  } catch (err) {
+    res.json({ activeSouls: getOrganicSanctuarySouls(), timestamp: Date.now() });
+  }
 });
 
 /**

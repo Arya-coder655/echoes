@@ -26,7 +26,8 @@ function Hero({
   onOpenMixer, 
   onOpenZenCinema, 
   onOpenRitual, 
-  onOpenWell 
+  onOpenWell,
+  activeSouls = 24
 }) {
   const [quoteIndex, setQuoteIndex] = useState(0);
 
@@ -54,6 +55,11 @@ function Hero({
         <div className="hero-badge">
           <Sparkles size={14} className="text-accent" />
           <span>Anonymous Emotional Haven</span>
+          <span className="hero-badge-separator">•</span>
+          <span className="hero-badge-souls">
+            <span className="candle-flicker">🕯️</span>
+            <span>{activeSouls} Active Souls</span>
+          </span>
         </div>
 
         <h1 className="hero-title">
@@ -145,6 +151,16 @@ function Hero({
             <div className="stat-info">
               <span className="stat-number">{totalShares}</span>
               <span className="stat-label">Resonances Shared</span>
+            </div>
+          </div>
+
+          <div className="stat-card stat-card-souls">
+            <div className="stat-icon-wrap stat-souls">
+              <span className="candle-flicker-icon">🕯️</span>
+            </div>
+            <div className="stat-info">
+              <span className="stat-number">{activeSouls}</span>
+              <span className="stat-label">Active Souls</span>
             </div>
           </div>
         </div>

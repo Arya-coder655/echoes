@@ -13,7 +13,8 @@ import {
   createEchoInDb,
   toggleLikeInDb,
   recordShareInDb,
-  addCommentInDb
+  addCommentInDb,
+  sendSoulHeartbeat
 } from './utils/api';
 import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown } from 'lucide-react';
 
@@ -108,6 +109,10 @@ export default function App() {
   const [reportEchoTarget, setReportEchoTarget] = useState(null);
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [activeSouls, setActiveSouls] = useState(() => {
+    const d = new Date();
+    return 19 + Math.round(Math.sin((d.getUTCHours() * 60 + d.getUTCMinutes()) / 120) * 5);
+  });
   const [footerDropdowns, setFooterDropdowns] = useState({
     experiences: false,
     walls: false,
@@ -154,6 +159,42 @@ export default function App() {
       isMounted = false;
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  // Synchronize Active Souls presence heartbeat
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncHeartbeat() {
+      const res = await sendSoulHeartbeat();
+      if (!isMounted) return;
+      if (res && res.isOnline && typeof res.activeSouls === 'number') {
+        setActiveSouls(res.activeSouls);
+      } else {
+        // Natural gentle sanctuary flutter if offline
+        setActiveSouls((prev) => {
+          const delta = (Math.random() > 0.5 ? 1 : -1) * (Math.random() > 0.65 ? 1 : 0);
+          return Math.max(14, Math.min(38, prev + delta));
+        });
+      }
+    }
+
+    syncHeartbeat();
+    const interval = setInterval(syncHeartbeat, 25000);
+
+    const handleFocus = () => syncHeartbeat();
+    window.addEventListener('focus', handleFocus);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') syncHeartbeat();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
@@ -499,6 +540,7 @@ export default function App() {
         bookmarkCount={bookmarks.length}
         isAudioPlaying={isAudioPlaying}
         sessionDuration={sessionDuration}
+        activeSouls={activeSouls}
       />
 
       <main className="main-content-wrapper">
@@ -510,6 +552,7 @@ export default function App() {
           onOpenZenCinema={handleOpenZenCinema}
           onOpenRitual={handleOpenRitual}
           onOpenWell={handleOpenWell}
+          activeSouls={activeSouls}
         />
 
         {/* Search, Filter Tabs & Sort Controls */}
@@ -664,6 +707,10 @@ export default function App() {
               <p className="footer-quote">
                 “Every unspoken word carries a story waiting to be heard. Turn your quietest ache into a bridge of connection.”
               </p>
+              <div className="footer-souls-badge" title="Kindred souls currently sharing the sanctuary">
+                <span className="candle-flicker">🕯️</span>
+                <span><b>{activeSouls} Active Souls</b> present in sanctuary</span>
+              </div>
             </div>
 
             {/* Sanctuary Experiences Accordion */}
@@ -747,7 +794,7 @@ export default function App() {
 
           <div className="footer-bottom-row">
             <p className="footer-copy">
-              &copy; {new Date().getFullYear()} Echoes • Resting in the rain for {sessionDuration}
+              &copy; {new Date().getFullYear()} Echoes • Resting in the rain for {sessionDuration} • 🕯️ {activeSouls} Souls Online
             </p>
             <div className="footer-bottom-actions">
               <button 

@@ -94,7 +94,16 @@ export async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // 7. Check if empty and seed initial sanctuary echoes
+    // 7. Create Active Sessions (Presence) Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS active_sessions (
+        session_id VARCHAR(64) PRIMARY KEY,
+        last_seen BIGINT NOT NULL,
+        INDEX idx_last_seen (last_seen)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 8. Check if empty and seed initial sanctuary echoes
     const [rows] = await pool.query('SELECT COUNT(*) as count FROM echoes');
     if (rows[0].count === 0) {
       await seedInitialData();
@@ -705,4 +714,37 @@ export async function deleteCommentPermanently(commentId) {
   await logAdminAction('delete_comment', commentId, `Comment #${commentId} removed`);
   return { success: true, id: commentId };
 }
+
+/**
+ * Record/refresh an active soul's heartbeat in TiDB/MySQL
+ */
+export async function updateSoulHeartbeat(sessionId) {
+  const now = Date.now();
+  try {
+    await pool.query(
+      `INSERT INTO active_sessions (session_id, last_seen)
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE last_seen = VALUES(last_seen)`,
+      [sessionId, now]
+    );
+  } catch (err) {
+    console.warn('Could not record heartbeat in MySQL:', err.message);
+  }
+}
+
+/**
+ * Prune stale sessions (>90 seconds old) and return active souls count
+ */
+export async function getActiveSoulsCount() {
+  const cutoff = Date.now() - 90 * 1000;
+  try {
+    await pool.query('DELETE FROM active_sessions WHERE last_seen < ?', [cutoff]);
+    const [rows] = await pool.query('SELECT COUNT(*) as count FROM active_sessions');
+    return rows[0]?.count || 0;
+  } catch (err) {
+    console.warn('Could not get active souls count from MySQL:', err.message);
+    return 0;
+  }
+}
+
 

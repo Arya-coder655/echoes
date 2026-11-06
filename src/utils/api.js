@@ -248,3 +248,50 @@ export async function deleteCommentAsAdmin(id, pin) {
     return { ok: false, error: err.message };
   }
 }
+
+/**
+ * Real-Time Active Souls (Presence System)
+ * Generates an ephemeral session token strictly kept in sessionStorage.
+ * Zero cookies, zero tracking, zero IP addresses recorded.
+ */
+export function getSoulSessionId() {
+  if (typeof window === 'undefined') return 'soul_ssr';
+  try {
+    let id = sessionStorage.getItem('echoes_soul_session');
+    if (!id) {
+      id = 'soul_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      sessionStorage.setItem('echoes_soul_session', id);
+    }
+    return id;
+  } catch {
+    return 'soul_guest_' + Math.random().toString(36).slice(2, 8);
+  }
+}
+
+export async function sendSoulHeartbeat() {
+  const sessionId = getSoulSessionId();
+  try {
+    const res = await fetch(`${API_BASE}/presence/heartbeat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId })
+    });
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const data = await res.json();
+    return { activeSouls: data.activeSouls, isOnline: true };
+  } catch (err) {
+    return { activeSouls: null, isOnline: false };
+  }
+}
+
+export async function fetchActiveSouls() {
+  try {
+    const res = await fetch(`${API_BASE}/presence`);
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const data = await res.json();
+    return { activeSouls: data.activeSouls, isOnline: true };
+  } catch (err) {
+    return { activeSouls: null, isOnline: false };
+  }
+}
+

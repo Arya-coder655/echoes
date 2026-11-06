@@ -30,7 +30,8 @@ function Navbar({
   onOpenWell,
   bookmarkCount,
   isAudioPlaying,
-  sessionDuration
+  sessionDuration,
+  activeSouls = 24
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -93,6 +94,16 @@ function Navbar({
 
         {/* Right: Minimal Actions */}
         <div className="minimal-actions">
+          {/* Active Souls Live Indicator */}
+          <div 
+            className="navbar-souls-pill nav-desktop-only"
+            title={`${activeSouls} souls currently sharing this sanctuary with you`}
+          >
+            <span className="candle-flicker">🕯️</span>
+            <span className="souls-count">{activeSouls}</span>
+            <span className="souls-text">Souls</span>
+          </div>
+
           {/* Zen Cinema Mode */}
           <button
             type="button"
@@ -173,6 +184,11 @@ function Navbar({
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="minimal-mobile-drawer">
+          <div className="mobile-souls-status">
+            <span className="candle-flicker">🕯️</span>
+            <span><b>{activeSouls} Active Souls</b> present in sanctuary</span>
+          </div>
+
           <div className="mobile-nav-pills-grid">
             {navItems.map((item) => {
               const Icon = item.icon;

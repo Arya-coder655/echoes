@@ -5731,6 +5731,130 @@ button {
   font-family: inherit;
 }
 
+/* ==========================================================================
+   Active Souls Presence System Styles & Animations
+   ========================================================================== */
+.candle-flicker {
+  display: inline-block;
+  animation: candleFlicker 3.2s infinite ease-in-out;
+  transform-origin: bottom center;
+}
+
+@keyframes candleFlicker {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.65));
+    opacity: 0.95;
+  }
+  25% {
+    transform: scale(1.08, 0.95) rotate(-1.5deg);
+    filter: drop-shadow(0 0 8px rgba(251, 146, 60, 0.95));
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.95, 1.05) rotate(1.2deg);
+    filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.7));
+    opacity: 0.88;
+  }
+  75% {
+    transform: scale(1.04, 1.02) rotate(-0.8deg);
+    filter: drop-shadow(0 0 9px rgba(245, 158, 11, 0.98));
+    opacity: 1;
+  }
+}
+
+.navbar-souls-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: var(--radius-full);
+  padding: 4px 11px;
+  font-size: 0.76rem;
+  color: #fef3c7;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.navbar-souls-pill:hover {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.4);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.2);
+}
+
+.navbar-souls-pill .souls-count {
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.navbar-souls-pill .souls-text {
+  color: rgba(254, 243, 199, 0.72);
+}
+
+.hero-badge-separator {
+  opacity: 0.35;
+  margin: 0 4px;
+}
+
+.hero-badge-souls {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.stat-souls {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+.candle-flicker-icon {
+  font-size: 19px;
+  display: inline-block;
+  animation: candleFlicker 3.2s infinite ease-in-out;
+}
+
+.mobile-souls-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 14px;
+  margin-bottom: 14px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  color: #fef3c7;
+}
+
+.mobile-souls-status b {
+  color: #fbbf24;
+}
+
+.footer-souls-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 5px 13px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  color: #fef3c7;
+  width: fit-content;
+}
+
+.footer-souls-badge b {
+  color: #fbbf24;
+}
+
+
 
 
 
