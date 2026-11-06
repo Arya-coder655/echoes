@@ -1,8 +1,8 @@
 import React from 'react';
-import { Search, X, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Search, X, ArrowUpDown } from 'lucide-react';
 import { CATEGORIES } from '../data/initialEchoes';
 
-export default function SearchFilterBar({
+function SearchFilterBar({
   searchQuery,
   onSearchChange,
   activeCategory,
@@ -70,3 +70,5 @@ export default function SearchFilterBar({
     </div>
   );
 }
+
+export default React.memo(SearchFilterBar);

@@ -18,7 +18,7 @@ import {
   Heart
 } from 'lucide-react';
 
-export default function Navbar({
+function Navbar({
   activeCategory,
   onSelectCategory,
   onOpenComposer,
@@ -281,3 +281,5 @@ export default function Navbar({
     </header>
   );
 }
+
+export default React.memo(Navbar);

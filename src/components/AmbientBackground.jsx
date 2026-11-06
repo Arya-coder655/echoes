@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-export default function AmbientBackground() {
+function AmbientBackground() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -92,3 +92,5 @@ export default function AmbientBackground() {
     />
   );
 }
+
+export default React.memo(AmbientBackground);

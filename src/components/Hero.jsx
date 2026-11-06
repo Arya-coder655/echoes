@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Feather, 
   Heart, 
@@ -20,7 +20,7 @@ const DAILY_QUOTES = [
   "“Forgive yourself for the silence that once felt like the only way to survive.”"
 ];
 
-export default function Hero({ 
+function Hero({ 
   echoes, 
   onOpenComposer, 
   onOpenMixer, 
@@ -38,8 +38,14 @@ export default function Hero({
   }, []);
 
   const totalEchoes = echoes.length;
-  const totalHearts = echoes.reduce((acc, curr) => acc + (curr.likes || 0), 0);
-  const totalShares = echoes.reduce((acc, curr) => acc + (curr.shares || 0), 0);
+  const totalHearts = useMemo(
+    () => echoes.reduce((acc, curr) => acc + (curr.likes || 0), 0),
+    [echoes]
+  );
+  const totalShares = useMemo(
+    () => echoes.reduce((acc, curr) => acc + (curr.shares || 0), 0),
+    [echoes]
+  );
 
   return (
     <section className="hero-section">
@@ -146,3 +152,5 @@ export default function Hero({
     </section>
   );
 }
+
+export default React.memo(Hero);

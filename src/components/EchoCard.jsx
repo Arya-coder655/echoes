@@ -27,7 +27,7 @@ function formatRelativeTime(timestamp) {
   return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export default function EchoCard({
+function EchoCard({
   echo,
   onLike,
   onOpenComments,
@@ -129,7 +129,13 @@ export default function EchoCard({
         {/* Optional User Attached Image */}
         {echo.image && (
           <div className="echo-image-container" onClick={() => setImageModalOpen(true)}>
-            <img src={echo.image} alt="Echo attachment" className="echo-attached-img" />
+            <img 
+              src={echo.image} 
+              alt="Echo attachment" 
+              className="echo-attached-img" 
+              loading="lazy" 
+              decoding="async" 
+            />
             <div className="image-zoom-overlay">
               <Maximize2 size={16} />
               <span>Click to enlarge</span>
@@ -200,7 +206,7 @@ export default function EchoCard({
       {imageModalOpen && (
         <div className="image-modal-backdrop" onClick={() => setImageModalOpen(false)}>
           <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
-            <img src={echo.image} alt="Enlarged attachment" className="image-modal-img" />
+            <img src={echo.image} alt="Enlarged attachment" className="image-modal-img" decoding="async" />
             <button className="image-modal-close" onClick={() => setImageModalOpen(false)}>
               &times;
             </button>
@@ -210,3 +216,5 @@ export default function EchoCard({
     </>
   );
 }
+
+export default React.memo(EchoCard);

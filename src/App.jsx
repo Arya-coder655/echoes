@@ -1,23 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import Navbar from './components/Navbar';
 import AmbientBackground from './components/AmbientBackground';
 import Hero from './components/Hero';
 import SearchFilterBar from './components/SearchFilterBar';
 import EchoCard from './components/EchoCard';
-import EchoComposer from './components/EchoComposer';
-import CommentsDrawer from './components/CommentsDrawer';
-import ShareModal from './components/ShareModal';
-import AboutModal from './components/AboutModal';
-import BeerEasterEggModal from './components/BeerEasterEggModal';
-import SoundscapeMixerModal from './components/SoundscapeMixerModal';
-import ZenCinemaModal from './components/ZenCinemaModal';
-import CatharsisRitualModal from './components/CatharsisRitualModal';
-import WhisperingWellModal from './components/WhisperingWellModal';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
-import ReportModal from './components/ReportModal';
-import AdminDashboardModal from './components/AdminDashboardModal';
-import confetti from 'canvas-confetti';
 import { INITIAL_ECHOES } from './data/initialEchoes';
 import { soundscape } from './utils/audio';
 import {
@@ -28,6 +16,31 @@ import {
   addCommentInDb
 } from './utils/api';
 import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown, ShieldCheck } from 'lucide-react';
+
+// Code-split / Lazy-loaded Modals & Secondary Experiences (Loaded on-demand)
+const EchoComposer = lazy(() => import('./components/EchoComposer'));
+const CommentsDrawer = lazy(() => import('./components/CommentsDrawer'));
+const ShareModal = lazy(() => import('./components/ShareModal'));
+const AboutModal = lazy(() => import('./components/AboutModal'));
+const BeerEasterEggModal = lazy(() => import('./components/BeerEasterEggModal'));
+const SoundscapeMixerModal = lazy(() => import('./components/SoundscapeMixerModal'));
+const ZenCinemaModal = lazy(() => import('./components/ZenCinemaModal'));
+const CatharsisRitualModal = lazy(() => import('./components/CatharsisRitualModal'));
+const WhisperingWellModal = lazy(() => import('./components/WhisperingWellModal'));
+const ReportModal = lazy(() => import('./components/ReportModal'));
+const AdminDashboardModal = lazy(() => import('./components/AdminDashboardModal'));
+
+// Sanctuary Elegant Glassmorphic Loading Fallback
+function SanctuaryModalFallback() {
+  return (
+    <div className="sanctuary-lazy-fallback-backdrop" role="status" aria-label="Loading sanctuary portal">
+      <div className="sanctuary-lazy-fallback-card">
+        <div className="sanctuary-fallback-spinner" />
+        <span className="sanctuary-fallback-text">Opening sanctuary portal...</span>
+      </div>
+    </div>
+  );
+}
 
 const STORAGE_KEY_POSTS = 'echoes_of_heart_posts_v2';
 const STORAGE_KEY_BOOKMARKS = 'echoes_of_heart_bookmarks_v2';
@@ -229,11 +242,11 @@ export default function App() {
     }
   }, [echoes]);
 
-  const showToast = (msg) => {
+  const showToast = useCallback((msg) => {
     setToastMessage(msg);
-  };
+  }, []);
 
-  const handleLike = async (id) => {
+  const handleLike = useCallback(async (id) => {
     const target = echoes.find((e) => e.id === id);
     const currentlyLiked = target ? target.liked : false;
 
@@ -255,9 +268,9 @@ export default function App() {
         prev.map((e) => (e.id === id ? { ...e, likes: res.likes } : e))
       );
     }
-  };
+  }, [echoes]);
 
-  const handleShareSuccess = async (id) => {
+  const handleShareSuccess = useCallback(async (id) => {
     setEchoes((prev) =>
       prev.map((echo) => {
         if (echo.id === id) {
@@ -267,19 +280,18 @@ export default function App() {
       })
     );
     await recordShareInDb(id);
-  };
+  }, []);
 
-  const handleToggleBookmark = (id) => {
-    if (bookmarks.includes(id)) {
-      setBookmarks((prev) => prev.filter((bId) => bId !== id));
-      showToast('Removed from saved echoes.');
-    } else {
-      setBookmarks((prev) => [...prev, id]);
-      showToast('Saved to your private collection.');
-    }
-  };
+  const handleToggleBookmark = useCallback((id) => {
+    setBookmarks((prev) => {
+      const exists = prev.includes(id);
+      const next = exists ? prev.filter((bId) => bId !== id) : [...prev, id];
+      showToast(exists ? 'Removed from saved echoes.' : 'Saved to your private collection.');
+      return next;
+    });
+  }, [showToast]);
 
-  const handleAddComment = async (id, text) => {
+  const handleAddComment = useCallback(async (id, text) => {
     const res = await addCommentInDb(id, text);
     const newComment = (res && res.data) || {
       id: `comm-${Date.now()}`,
@@ -297,25 +309,31 @@ export default function App() {
       })
     );
 
-    if (commentsEcho && commentsEcho.id === id) {
-      setCommentsEcho((prev) => ({
-        ...prev,
-        comments: [newComment, ...(prev.comments || [])]
-      }));
-    }
+    setCommentsEcho((prev) => {
+      if (prev && prev.id === id) {
+        return {
+          ...prev,
+          comments: [newComment, ...(prev.comments || [])]
+        };
+      }
+      return prev;
+    });
 
     showToast('Your reflection has been anonymously shared and saved.');
-  };
+  }, [showToast]);
 
-  const handlePublishEcho = async (newEcho) => {
+  const handlePublishEcho = useCallback(async (newEcho) => {
     // Save to persistent database
     const res = await createEchoInDb(newEcho);
     const echoToSave = (res && res.data) || newEcho;
 
     setEchoes((prev) => [echoToSave, ...prev]);
-    if (activeCategory !== 'all' && activeCategory !== echoToSave.category) {
-      setActiveCategory('all');
-    }
+    setActiveCategory((prevCat) => {
+      if (prevCat !== 'all' && prevCat !== echoToSave.category) {
+        return 'all';
+      }
+      return prevCat;
+    });
     window.scrollTo({ top: 350, behavior: 'smooth' });
 
     if (res && res.error) {
@@ -323,9 +341,9 @@ export default function App() {
     } else {
       showToast('Your whisper has been saved in the sanctuary database.');
     }
-  };
+  }, [showToast]);
 
-  const handleReportSubmitted = (echoId) => {
+  const handleReportSubmitted = useCallback((echoId) => {
     setReportedIds((prev) => {
       const next = prev.includes(echoId) ? prev : [...prev, echoId];
       try {
@@ -335,9 +353,10 @@ export default function App() {
     });
     setEchoes((prev) => prev.filter((e) => e.id !== echoId));
     showToast('Echo submitted for review and removed from your feed.');
-  };
+  }, [showToast]);
 
-  const handleCloseBeerModal = (didPay) => {
+  // Lazy dynamic confetti on Easter egg close without tip
+  const handleCloseBeerModal = useCallback(async (didPay) => {
     setBeerModalOpen(false);
 
     if (didPay) {
@@ -347,6 +366,8 @@ export default function App() {
 
     // User checked Easter egg and closed without paying -> Minimal Sad Animation!
     try {
+      const confettiModule = await import('canvas-confetti');
+      const confetti = confettiModule.default || confettiModule;
       confetti({
         particleCount: 22,
         angle: 270, // downwards like falling tears / rain
@@ -372,7 +393,21 @@ export default function App() {
     setTimeout(() => {
       setBeerSadState(false);
     }, 6000);
-  };
+  }, [showToast]);
+
+  // Stable callback triggers for modals & drawers
+  const handleOpenComposer = useCallback(() => setComposerOpen(true), []);
+  const handleOpenMixer = useCallback(() => setMixerOpen(true), []);
+  const handleOpenZenCinema = useCallback(() => setZenCinemaOpen(true), []);
+  const handleOpenRitual = useCallback(() => setRitualOpen(true), []);
+  const handleOpenWell = useCallback(() => setWellOpen(true), []);
+  const handleOpenAbout = useCallback(() => setAboutOpen(true), []);
+  const handleOpenBeer = useCallback(() => setBeerModalOpen(true), []);
+  const handleOpenAdmin = useCallback(() => setAdminOpen(true), []);
+
+  const handleOpenComments = useCallback((targetEcho) => setCommentsEcho(targetEcho), []);
+  const handleOpenShare = useCallback((targetEcho) => setShareEcho(targetEcho), []);
+  const handleOpenReport = useCallback((targetEcho) => setReportEchoTarget(targetEcho), []);
 
   // Category counts
   const categoryCounts = useMemo(() => {
@@ -447,13 +482,13 @@ export default function App() {
       <Navbar
         activeCategory={activeCategory}
         onSelectCategory={setActiveCategory}
-        onOpenComposer={() => setComposerOpen(true)}
-        onOpenAbout={() => setAboutOpen(true)}
-        onOpenBeer={() => setBeerModalOpen(true)}
-        onOpenMixer={() => setMixerOpen(true)}
-        onOpenZenCinema={() => setZenCinemaOpen(true)}
-        onOpenRitual={() => setRitualOpen(true)}
-        onOpenWell={() => setWellOpen(true)}
+        onOpenComposer={handleOpenComposer}
+        onOpenAbout={handleOpenAbout}
+        onOpenBeer={handleOpenBeer}
+        onOpenMixer={handleOpenMixer}
+        onOpenZenCinema={handleOpenZenCinema}
+        onOpenRitual={handleOpenRitual}
+        onOpenWell={handleOpenWell}
         bookmarkCount={bookmarks.length}
         isAudioPlaying={isAudioPlaying}
         sessionDuration={sessionDuration}
@@ -463,11 +498,11 @@ export default function App() {
         {/* Poetic Hero Section with Experience Cards */}
         <Hero
           echoes={echoes}
-          onOpenComposer={() => setComposerOpen(true)}
-          onOpenMixer={() => setMixerOpen(true)}
-          onOpenZenCinema={() => setZenCinemaOpen(true)}
-          onOpenRitual={() => setRitualOpen(true)}
-          onOpenWell={() => setWellOpen(true)}
+          onOpenComposer={handleOpenComposer}
+          onOpenMixer={handleOpenMixer}
+          onOpenZenCinema={handleOpenZenCinema}
+          onOpenRitual={handleOpenRitual}
+          onOpenWell={handleOpenWell}
         />
 
         {/* Search, Filter Tabs & Sort Controls */}
@@ -511,7 +546,7 @@ export default function App() {
           </div>
 
           <button
-            onClick={() => setComposerOpen(true)}
+            onClick={handleOpenComposer}
             className="quick-compose-trigger"
           >
             <PlusCircle size={16} />
@@ -528,9 +563,9 @@ export default function App() {
                   key={echo.id}
                   echo={echo}
                   onLike={handleLike}
-                  onOpenComments={(targetEcho) => setCommentsEcho(targetEcho)}
-                  onOpenShare={(targetEcho) => setShareEcho(targetEcho)}
-                  onOpenReport={(targetEcho) => setReportEchoTarget(targetEcho)}
+                  onOpenComments={handleOpenComments}
+                  onOpenShare={handleOpenShare}
+                  onOpenReport={handleOpenReport}
                   isBookmarked={bookmarks.includes(echo.id)}
                   onToggleBookmark={handleToggleBookmark}
                   onToast={showToast}
@@ -581,28 +616,28 @@ export default function App() {
           <span>Feed</span>
         </button>
         <button
-          onClick={() => setZenCinemaOpen(true)}
+          onClick={handleOpenZenCinema}
           className="mobile-tab-btn"
         >
           <Tv size={18} />
           <span>Cinema</span>
         </button>
         <button
-          onClick={() => setComposerOpen(true)}
+          onClick={handleOpenComposer}
           className="mobile-center-compose-btn"
           aria-label="New Echo"
         >
           <PlusCircle size={24} />
         </button>
         <button
-          onClick={() => setMixerOpen(true)}
+          onClick={handleOpenMixer}
           className="mobile-tab-btn"
         >
           <CloudRain size={18} />
           <span>Rain</span>
         </button>
         <button
-          onClick={() => setRitualOpen(true)}
+          onClick={handleOpenRitual}
           className="mobile-tab-btn"
         >
           <Flame size={18} />
@@ -625,7 +660,7 @@ export default function App() {
               {/* About Us Button in Footer */}
               <button 
                 type="button"
-                onClick={() => setAboutOpen(true)}
+                onClick={handleOpenAbout}
                 className="footer-about-btn"
                 title="Learn about Echoes & the Anonymous Sanctuary"
               >
@@ -646,10 +681,10 @@ export default function App() {
                 <ChevronDown size={17} className="footer-accordion-icon" />
               </button>
               <ul className={`footer-links-list ${footerDropdowns.experiences ? 'mobile-open' : ''}`}>
-                <li><button type="button" onClick={() => setMixerOpen(true)}>Rain & Soundscape Mixer</button></li>
-                <li><button type="button" onClick={() => setZenCinemaOpen(true)}>Zen Cinema (Auto-Stream)</button></li>
-                <li><button type="button" onClick={() => setRitualOpen(true)}>The Sacred Hearth (Burn to Ash)</button></li>
-                <li><button type="button" onClick={() => setWellOpen(true)}>The Whispering Well</button></li>
+                <li><button type="button" onClick={handleOpenMixer}>Rain & Soundscape Mixer</button></li>
+                <li><button type="button" onClick={handleOpenZenCinema}>Zen Cinema (Auto-Stream)</button></li>
+                <li><button type="button" onClick={handleOpenRitual}>The Sacred Hearth (Burn to Ash)</button></li>
+                <li><button type="button" onClick={handleOpenWell}>The Whispering Well</button></li>
               </ul>
             </div>
 
@@ -687,11 +722,11 @@ export default function App() {
                 <ChevronDown size={17} className="footer-accordion-icon" />
               </button>
               <ul className={`footer-links-list ${footerDropdowns.about ? 'mobile-open' : ''}`}>
-                <li><button type="button" onClick={() => setAboutOpen(true)}>About Echoes</button></li>
-                <li><button type="button" onClick={() => setAboutOpen(true)}>Why This Space Exists</button></li>
-                <li><button type="button" onClick={() => setAboutOpen(true)}>100% Anonymous Promise</button></li>
-                <li><button type="button" onClick={() => setAboutOpen(true)}>Sanctuary Principles</button></li>
-                <li><button type="button" onClick={() => setAdminOpen(true)}>Guardian Portal</button></li>
+                <li><button type="button" onClick={handleOpenAbout}>About Echoes</button></li>
+                <li><button type="button" onClick={handleOpenAbout}>Why This Space Exists</button></li>
+                <li><button type="button" onClick={handleOpenAbout}>100% Anonymous Promise</button></li>
+                <li><button type="button" onClick={handleOpenAbout}>Sanctuary Principles</button></li>
+                <li><button type="button" onClick={handleOpenAdmin}>Guardian Portal</button></li>
               </ul>
             </div>
           </div>
@@ -700,7 +735,7 @@ export default function App() {
           <div className="beer-trigger-section">
             <button
               type="button"
-              onClick={() => setBeerModalOpen(true)}
+              onClick={handleOpenBeer}
               className={`beer-icon-circle-btn ${beerSadState ? 'sad-wobble' : ''}`}
               title={beerSadState ? "Arya will drink water today... 💧" : "A little something for the curious ones."}
               aria-label="Easter egg"
@@ -721,7 +756,7 @@ export default function App() {
             <div className="footer-bottom-actions">
               <button 
                 type="button"
-                onClick={() => setAboutOpen(true)}
+                onClick={handleOpenAbout}
                 className="footer-about-pill-btn"
                 aria-label="About Us"
               >
@@ -730,7 +765,7 @@ export default function App() {
               </button>
               <button 
                 type="button"
-                onClick={() => setAdminOpen(true)}
+                onClick={handleOpenAdmin}
                 className="footer-about-pill-btn footer-guardian-btn"
                 aria-label="Guardian Portal"
                 title="Moderation & Guardian Portal"
@@ -747,94 +782,138 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Modals & Drawers */}
-      <EchoComposer
-        isOpen={composerOpen}
-        onClose={() => setComposerOpen(false)}
-        onPublish={handlePublishEcho}
-        onToast={showToast}
-      />
+      {/* Code-split / Lazy-loaded Modals & Drawers */}
+      {composerOpen && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <EchoComposer
+            isOpen={composerOpen}
+            onClose={() => setComposerOpen(false)}
+            onPublish={handlePublishEcho}
+            onToast={showToast}
+          />
+        </Suspense>
+      )}
 
-      <CommentsDrawer
-        isOpen={Boolean(commentsEcho)}
-        echo={commentsEcho}
-        onClose={() => setCommentsEcho(null)}
-        onAddComment={handleAddComment}
-      />
+      {Boolean(commentsEcho) && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <CommentsDrawer
+            isOpen={Boolean(commentsEcho)}
+            echo={commentsEcho}
+            onClose={() => setCommentsEcho(null)}
+            onAddComment={handleAddComment}
+          />
+        </Suspense>
+      )}
 
-      <ShareModal
-        isOpen={Boolean(shareEcho)}
-        echo={shareEcho}
-        onClose={() => setShareEcho(null)}
-        onShareSuccess={handleShareSuccess}
-        onToast={showToast}
-      />
+      {Boolean(shareEcho) && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <ShareModal
+            isOpen={Boolean(shareEcho)}
+            echo={shareEcho}
+            onClose={() => setShareEcho(null)}
+            onShareSuccess={handleShareSuccess}
+            onToast={showToast}
+          />
+        </Suspense>
+      )}
 
-      <AboutModal
-        isOpen={aboutOpen}
-        onClose={() => setAboutOpen(false)}
-        onOpenBeer={() => setBeerModalOpen(true)}
-      />
+      {aboutOpen && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <AboutModal
+            isOpen={aboutOpen}
+            onClose={() => setAboutOpen(false)}
+            onOpenBeer={handleOpenBeer}
+          />
+        </Suspense>
+      )}
 
       {/* Beer Easter Egg Modal */}
-      <BeerEasterEggModal
-        isOpen={beerModalOpen}
-        onClose={handleCloseBeerModal}
-      />
+      {beerModalOpen && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <BeerEasterEggModal
+            isOpen={beerModalOpen}
+            onClose={handleCloseBeerModal}
+          />
+        </Suspense>
+      )}
 
       {/* Real Rain Soundscape Lounge */}
-      <SoundscapeMixerModal
-        isOpen={mixerOpen}
-        onClose={() => setMixerOpen(false)}
-      />
+      {mixerOpen && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <SoundscapeMixerModal
+            isOpen={mixerOpen}
+            onClose={() => setMixerOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* Zen Cinema Full-screen Auto-Stream */}
-      <ErrorBoundary
-        key={zenCinemaOpen ? 'zen-open' : 'zen-closed'}
-        fallback={() => {
-          setZenCinemaOpen(false);
-          return null;
-        }}
-      >
-        <ZenCinemaModal
-          isOpen={zenCinemaOpen}
-          echoes={echoes}
-          onClose={() => setZenCinemaOpen(false)}
-          onToast={showToast}
-        />
-      </ErrorBoundary>
+      {zenCinemaOpen && (
+        <ErrorBoundary
+          key="zen-cinema-lazy"
+          fallback={() => {
+            setZenCinemaOpen(false);
+            return null;
+          }}
+        >
+          <Suspense fallback={<SanctuaryModalFallback />}>
+            <ZenCinemaModal
+              isOpen={zenCinemaOpen}
+              echoes={echoes}
+              onClose={() => setZenCinemaOpen(false)}
+              onToast={showToast}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )}
 
       {/* Sacred Hearth (Catharsis Burn Ritual) */}
-      <CatharsisRitualModal
-        isOpen={ritualOpen}
-        onClose={() => setRitualOpen(false)}
-        onToast={showToast}
-      />
+      {ritualOpen && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <CatharsisRitualModal
+            isOpen={ritualOpen}
+            onClose={() => setRitualOpen(false)}
+            onToast={showToast}
+          />
+        </Suspense>
+      )}
 
       {/* The Whispering Well (Message in a Bottle) */}
-      <WhisperingWellModal
-        isOpen={wellOpen}
-        echoes={echoes}
-        onClose={() => setWellOpen(false)}
-        onToast={showToast}
-      />
+      {wellOpen && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <WhisperingWellModal
+            isOpen={wellOpen}
+            echoes={echoes}
+            onClose={() => setWellOpen(false)}
+            onToast={showToast}
+          />
+        </Suspense>
+      )}
 
       {/* Report Modal */}
-      <ReportModal
-        isOpen={Boolean(reportEchoTarget)}
-        echo={reportEchoTarget}
-        onClose={() => setReportEchoTarget(null)}
-        onToast={showToast}
-        onReportSubmitted={handleReportSubmitted}
-      />
+      {Boolean(reportEchoTarget) && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <ReportModal
+            isOpen={Boolean(reportEchoTarget)}
+            echo={reportEchoTarget}
+            onClose={() => setReportEchoTarget(null)}
+            onToast={showToast}
+            onReportSubmitted={handleReportSubmitted}
+          />
+        </Suspense>
+      )}
 
       {/* Sanctuary Guardian / Admin Dashboard Modal */}
-      <AdminDashboardModal
-        isOpen={adminOpen}
-        onClose={() => setAdminOpen(false)}
-        onToast={showToast}
-        echoes={echoes}
-      />
+      {adminOpen && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <AdminDashboardModal
+            isOpen={adminOpen}
+            onClose={() => setAdminOpen(false)}
+            onToast={showToast}
+            echoes={echoes}
+          />
+        </Suspense>
+      )}
 
       {/* Minimal Sad Reaction Toast */}
       {beerSadToast && (
