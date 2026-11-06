@@ -824,6 +824,7 @@ export default function App() {
         isOpen={adminOpen}
         onClose={() => setAdminOpen(false)}
         onToast={showToast}
+        echoes={echoes}
       />
 
       {/* Minimal Sad Reaction Toast */}

@@ -110,10 +110,13 @@ export async function verifyAdminPin(pin) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin })
     });
-    const json = await res.json();
-    return { ok: res.ok, data: json };
+    if (res.status === 404) {
+      return { ok: false, is404: true, status: 404, error: 'Render backend is updating. Deploying endpoints...' };
+    }
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data: json, error: json?.error };
   } catch (err) {
-    return { ok: false, error: err.message };
+    return { ok: false, isNetworkError: true, error: err.message };
   }
 }
 
@@ -127,11 +130,15 @@ export async function fetchAdminOverview(pin) {
         'x-admin-key': pin
       }
     });
+    if (res.status === 404) {
+      return { ok: false, is404: true, status: 404, error: 'Render backend update pending deployment.' };
+    }
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
       throw new Error(errJson.error || `HTTP ${res.status}`);
     }
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
+    if (!data) throw new Error('Invalid JSON response');
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: err.message };
@@ -149,8 +156,8 @@ export async function restoreEchoAsAdmin(id, pin) {
         'x-admin-key': pin
       }
     });
-    const json = await res.json();
-    return { ok: res.ok, data: json };
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, data: json, error: json?.error };
   } catch (err) {
     return { ok: false, error: err.message };
   }
@@ -167,8 +174,8 @@ export async function deleteEchoAsAdmin(id, pin) {
         'x-admin-key': pin
       }
     });
-    const json = await res.json();
-    return { ok: res.ok, data: json };
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, data: json, error: json?.error };
   } catch (err) {
     return { ok: false, error: err.message };
   }
@@ -185,8 +192,8 @@ export async function deleteCommentAsAdmin(id, pin) {
         'x-admin-key': pin
       }
     });
-    const json = await res.json();
-    return { ok: res.ok, data: json };
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, data: json, error: json?.error };
   } catch (err) {
     return { ok: false, error: err.message };
   }

@@ -4696,18 +4696,30 @@ button {
   margin: 0;
 }
 
-.admin-login-tip {
-  margin-top: 24px;
-  font-size: 0.78rem;
-  color: #64748b;
+/* DEPLOYMENT PENDING ALERT BANNER */
+.admin-deploy-alert-banner {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 16px 24px 0 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: #fef3c7;
+  line-height: 1.45;
 }
 
-.admin-login-tip code {
-  background: rgba(255, 255, 255, 0.08);
-  padding: 2px 6px;
-  border-radius: 4px;
+.admin-deploy-link {
   color: #fbbf24;
-  font-family: monospace;
+  text-decoration: underline;
+  font-weight: 600;
+  transition: opacity 0.2s ease;
+}
+
+.admin-deploy-link:hover {
+  opacity: 0.85;
 }
 
 /* DASHBOARD BODY */
