@@ -4733,7 +4733,7 @@ button {
 /* METRICS GRID */
 .admin-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 12px;
   padding: 16px 24px;
   background: rgba(255, 255, 255, 0.015);
@@ -5321,6 +5321,327 @@ button {
 .admin-btn.mini {
   padding: 4px 10px;
   font-size: 0.75rem;
+}
+
+/* STATUS PILL IN HEADER */
+.admin-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-status-indicator.online {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.admin-status-indicator.standby {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.admin-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* ADVANCED FILTER & SEARCH BAR (Feature 4) */
+.admin-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: rgba(0, 0, 0, 0.22);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-filter-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 6px 12px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.admin-filter-selects {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 4px 10px;
+}
+
+.admin-filter-select {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 0.82rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.admin-filter-select option {
+  background: #181824;
+  color: #ffffff;
+}
+
+.admin-reset-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+/* DISMISS REPORT BUTTON (Feature 2) */
+.admin-btn-dismiss {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.admin-btn-dismiss:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.25);
+  color: #ffffff;
+}
+
+/* ORIGINAL WHISPER CONTAINER (Feature 1) */
+.admin-review-whisper-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-review-whisper-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.admin-reason-time {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+/* ACTIVITY LOGS (Feature 3) */
+.admin-logs-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-log-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+}
+
+.admin-log-item:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-log-icon-col {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-log-details-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-log-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.badge-restore {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.badge-dismiss {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.badge-delete {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+}
+
+.badge-neutral {
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+.admin-log-desc-text {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  margin: 0;
+}
+
+.admin-log-time {
+  font-size: 0.74rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* SYSTEM HEALTH TELEMETRY (Feature 5) */
+.admin-health-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-health-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-health-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.admin-health-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-health-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-health-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #ffffff;
+}
+
+.admin-health-status-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.admin-health-status-pill.online {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.admin-health-status-pill.standby {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.admin-health-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-health-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.admin-health-row:last-child {
+  border-bottom: none;
+}
+
+.admin-health-label {
+  color: #94a3b8;
+}
+
+.admin-health-val {
+  color: #e2e8f0;
 }
 
 /* FOOTER GUARDIAN PILL BUTTON */

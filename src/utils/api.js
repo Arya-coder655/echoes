@@ -164,6 +164,56 @@ export async function restoreEchoAsAdmin(id, pin) {
 }
 
 /**
+ * Admin: Dismiss reports on an echo
+ */
+export async function dismissReportAsAdmin(id, pin) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/echoes/${id}/dismiss`, {
+      method: 'POST',
+      headers: {
+        'x-admin-key': pin
+      }
+    });
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, data: json, error: json?.error };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Fetch activity audit logs
+ */
+export async function fetchAdminLogs(pin, limit = 50) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/logs?limit=${limit}`, {
+      headers: {
+        'x-admin-key': pin
+      }
+    });
+    const json = await res.json().catch(() => []);
+    return { ok: res.ok, data: json };
+  } catch (err) {
+    return { ok: false, error: err.message, data: [] };
+  }
+}
+
+/**
+ * System Health check
+ */
+export async function fetchHealthStatus() {
+  try {
+    const start = performance.now();
+    const res = await fetch(`${API_BASE}/health`);
+    const latency = Math.round(performance.now() - start);
+    const data = await res.json().catch(() => null);
+    return { ok: res.ok, latency, data };
+  } catch (err) {
+    return { ok: false, latency: null, error: err.message };
+  }
+}
+
+/**
  * Admin: Permanently delete echo
  */
 export async function deleteEchoAsAdmin(id, pin) {

@@ -17,6 +17,8 @@ import {
   exportDatabaseSnapshot,
   getAdminOverview,
   restoreEcho,
+  dismissReport,
+  getAdminLogs,
   deleteEchoPermanently,
   deleteCommentPermanently
 } from './db.js';
@@ -291,6 +293,32 @@ app.post('/api/admin/echoes/:id/restore', requireAdminAuth, async (req, res) => 
   } catch (err) {
     console.error('Error restoring echo:', err);
     res.status(500).json({ error: 'Failed to restore echo.' });
+  }
+});
+
+/**
+ * Admin: Dismiss reports on an echo
+ */
+app.post('/api/admin/echoes/:id/dismiss', requireAdminAuth, async (req, res) => {
+  try {
+    const result = await dismissReport(req.params.id);
+    res.json({ success: true, message: 'Reports dismissed for echo', result });
+  } catch (err) {
+    console.error('Error dismissing report:', err);
+    res.status(500).json({ error: 'Failed to dismiss reports.' });
+  }
+});
+
+/**
+ * Admin: Fetch activity audit logs
+ */
+app.get('/api/admin/logs', requireAdminAuth, async (req, res) => {
+  try {
+    const logs = await getAdminLogs(Number(req.query.limit || 50));
+    res.json(logs);
+  } catch (err) {
+    console.error('Error fetching admin logs:', err);
+    res.status(500).json({ error: 'Failed to retrieve admin logs.' });
   }
 });
 

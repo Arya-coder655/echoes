@@ -82,7 +82,19 @@ export async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // 6. Check if empty and seed initial sanctuary echoes
+    // 6. Create Admin Activity Logs Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_logs (
+        id VARCHAR(64) PRIMARY KEY,
+        action VARCHAR(64) NOT NULL,
+        target_id VARCHAR(64) NOT NULL,
+        details TEXT,
+        timestamp BIGINT NOT NULL,
+        INDEX idx_log_timestamp (timestamp)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 7. Check if empty and seed initial sanctuary echoes
     const [rows] = await pool.query('SELECT COUNT(*) as count FROM echoes');
     if (rows[0].count === 0) {
       await seedInitialData();
@@ -560,6 +572,32 @@ export async function getAdminOverview() {
     LIMIT 50
   `);
 
+  // Fetch recent 50 admin audit activity logs
+  const [recentLogs] = await pool.query(`
+    SELECT * FROM admin_logs ORDER BY timestamp DESC LIMIT 50
+  `).catch(() => [[]]);
+
+  const systemHealth = {
+    database: {
+      status: 'connected',
+      engine: 'TiDB Cloud Serverless (MySQL 8.0 Compatible)',
+      host: dbConfig.host,
+      database: dbConfig.database,
+      ssl: Boolean(dbConfig.ssl),
+      lastSync: new Date().toISOString()
+    },
+    backend: {
+      status: 'online',
+      nodeVersion: process.version,
+      uptimeSeconds: Math.floor(process.uptime()),
+      env: process.env.NODE_ENV || 'production'
+    },
+    privacy: {
+      status: 'active',
+      guarantee: 'Zero PII / No IP logs stored'
+    }
+  };
+
   return {
     stats: {
       totalEchoes: Number(echoStats[0]?.totalEchoes || 0),
@@ -578,8 +616,56 @@ export async function getAdminOverview() {
       timestamp: Number(c.timestamp),
       echoSnippet: c.echoSnippet || '',
       echoName: c.echoName || ''
-    }))
+    })),
+    recentLogs: (recentLogs || []).map((l) => ({
+      id: l.id,
+      action: l.action,
+      targetId: l.target_id,
+      details: l.details || '',
+      timestamp: Number(l.timestamp)
+    })),
+    systemHealth
   };
+}
+
+/**
+ * Admin: Log activity into MySQL admin_logs
+ */
+export async function logAdminAction(action, targetId, details = '') {
+  try {
+    const id = `act-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+    const timestamp = Date.now();
+    await pool.query(
+      'INSERT INTO admin_logs (id, action, target_id, details, timestamp) VALUES (?, ?, ?, ?, ?)',
+      [id, action, targetId, details, timestamp]
+    );
+    return { id, action, targetId, details, timestamp };
+  } catch (err) {
+    console.warn('Failed to insert admin log:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Admin: Fetch activity logs
+ */
+export async function getAdminLogs(limit = 50) {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM admin_logs ORDER BY timestamp DESC LIMIT ?',
+      [limit]
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      action: r.action,
+      targetId: r.target_id,
+      details: r.details || '',
+      timestamp: Number(r.timestamp)
+    }));
+  } catch (err) {
+    console.warn('Failed fetching admin logs:', err.message);
+    return [];
+  }
 }
 
 /**
@@ -588,6 +674,17 @@ export async function getAdminOverview() {
 export async function restoreEcho(echoId) {
   await pool.query('UPDATE echoes SET reported = 0, report_count = 0 WHERE id = ?', [echoId]);
   await pool.query('DELETE FROM reports WHERE echo_id = ?', [echoId]);
+  await logAdminAction('restore_echo', echoId, `Whisper #${echoId} restored to sanctuary feed`);
+  return { success: true, id: echoId };
+}
+
+/**
+ * Admin: Dismiss reports on an echo (clears report queue)
+ */
+export async function dismissReport(echoId) {
+  await pool.query('UPDATE echoes SET reported = 0, report_count = 0 WHERE id = ?', [echoId]);
+  await pool.query('DELETE FROM reports WHERE echo_id = ?', [echoId]);
+  await logAdminAction('dismiss_report', echoId, `Reports dismissed for whisper #${echoId}`);
   return { success: true, id: echoId };
 }
 
@@ -596,6 +693,7 @@ export async function restoreEcho(echoId) {
  */
 export async function deleteEchoPermanently(echoId) {
   await pool.query('DELETE FROM echoes WHERE id = ?', [echoId]);
+  await logAdminAction('delete_echo', echoId, `Whisper #${echoId} permanently erased`);
   return { success: true, id: echoId };
 }
 
@@ -604,6 +702,7 @@ export async function deleteEchoPermanently(echoId) {
  */
 export async function deleteCommentPermanently(commentId) {
   await pool.query('DELETE FROM comments WHERE id = ?', [commentId]);
+  await logAdminAction('delete_comment', commentId, `Comment #${commentId} removed`);
   return { success: true, id: commentId };
 }
 
