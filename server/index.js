@@ -435,7 +435,18 @@ app.delete('/api/admin/comments/:id', requireAdminAuth, async (req, res) => {
 // -------------------------------------------------------------
 const distPath = path.join(rootDir, 'dist');
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
+  const staticOptions = {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.webmanifest')) {
+        res.setHeader('Content-Type', 'application/manifest+json');
+      }
+    }
+  };
+
+  // Serve static assets at both '/echoes' (base URL) and root '/'
+  app.use('/echoes', express.static(distPath, staticOptions));
+  app.use(express.static(distPath, staticOptions));
+
   // Fallback to index.html for SPA routing (Express 5 compatible)
   app.use((req, res, next) => {
     if (req.method === 'GET' && !req.path.startsWith('/api')) {
