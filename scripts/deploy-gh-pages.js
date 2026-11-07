@@ -38,7 +38,7 @@ run('git config user.name "Arya-coder655"');
 run('git config user.email "aryamore655@gmail.com"');
 run('git checkout -b gh-pages');
 run('git add -A');
-run('git commit -m "deploy: update GitHub Pages build with full mobile responsive system and beer easter egg"');
+run('git commit -m "deploy: update GitHub Pages build with full PWA manifest, service worker and install experience"');
 
 const rootRemoteUrl = execSync('git remote get-url origin', { cwd: path.resolve('.') }).toString().trim();
 run(`git remote add origin ${rootRemoteUrl}`);
