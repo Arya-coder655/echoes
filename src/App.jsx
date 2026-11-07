@@ -8,6 +8,7 @@ import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { INITIAL_ECHOES } from './data/initialEchoes';
 import { soundscape } from './utils/audio';
+import { usePwaInstall } from './hooks/usePwaInstall';
 import {
   fetchEchoesFromDb,
   createEchoInDb,
@@ -30,6 +31,7 @@ const CatharsisRitualModal = lazy(() => import('./components/CatharsisRitualModa
 const WhisperingWellModal = lazy(() => import('./components/WhisperingWellModal'));
 const ReportModal = lazy(() => import('./components/ReportModal'));
 const AdminDashboardModal = lazy(() => import('./components/AdminDashboardModal'));
+const InstallAppModal = lazy(() => import('./components/InstallAppModal'));
 
 // Sanctuary Elegant Glassmorphic Loading Fallback
 function SanctuaryModalFallback() {
@@ -118,6 +120,18 @@ export default function App() {
     walls: false,
     about: false
   });
+
+  // PWA Installation Hook
+  const {
+    isInstallable,
+    isInstalled,
+    isIOS,
+    hasNativePrompt,
+    isInstallModalOpen,
+    openInstallModal,
+    closeInstallModal,
+    triggerInstall
+  } = usePwaInstall();
 
   const toggleFooterDropdown = (key) => {
     setFooterDropdowns((prev) => ({
@@ -541,6 +555,8 @@ export default function App() {
         isAudioPlaying={isAudioPlaying}
         sessionDuration={sessionDuration}
         activeSouls={activeSouls}
+        isInstallable={isInstallable}
+        onOpenInstall={openInstallModal}
       />
 
       <main className="main-content-wrapper">
@@ -729,6 +745,7 @@ export default function App() {
                 <li><button type="button" onClick={handleOpenZenCinema}>Zen Cinema (Auto-Stream)</button></li>
                 <li><button type="button" onClick={handleOpenRitual}>The Sacred Hearth (Burn to Ash)</button></li>
                 <li><button type="button" onClick={handleOpenWell}>The Whispering Well</button></li>
+                <li><button type="button" onClick={openInstallModal}>📱 Install Echoes App</button></li>
               </ul>
             </div>
 
@@ -945,6 +962,21 @@ export default function App() {
             onToast={showToast}
             echoes={echoes}
             activeSouls={activeSouls}
+          />
+        </Suspense>
+      )}
+
+      {/* Install App Modal */}
+      {isInstallModalOpen && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <InstallAppModal
+            isOpen={isInstallModalOpen}
+            onClose={closeInstallModal}
+            hasNativePrompt={hasNativePrompt}
+            isIOS={isIOS}
+            isInstalled={isInstalled}
+            onTriggerInstall={triggerInstall}
+            onToast={showToast}
           />
         </Suspense>
       )}

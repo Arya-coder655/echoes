@@ -14,10 +14,12 @@
     "build": "vite build",
     "deploy:gh": "npm run build && node scripts/deploy-gh-pages.js",
     "test:preview": "npm run build && node scripts/test-preview.js",
+    "test:pwa": "npm run build && node scripts/test-pwa.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vitejs/plugin-react": "^6.1.0",
     "canvas-confetti": "^1.9.4",
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",
@@ -26,12 +28,12 @@
     "mysql2": "^3.24.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "vite": "^8.2.2",
-    "@vitejs/plugin-react": "^6.1.0"
+    "vite": "^8.2.2"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "oxlint": "^1.79.0"
+    "oxlint": "^1.79.0",
+    "vite-plugin-pwa": "^2.0.0"
   }
 }

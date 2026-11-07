@@ -15,7 +15,8 @@ import {
   Moon,
   HeartPulse,
   Zap,
-  Heart
+  Heart,
+  Smartphone
 } from 'lucide-react';
 
 function Navbar({
@@ -31,7 +32,9 @@ function Navbar({
   bookmarkCount,
   isAudioPlaying,
   sessionDuration,
-  activeSouls = 24
+  activeSouls = 24,
+  isInstallable = true,
+  onOpenInstall
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -160,6 +163,19 @@ function Navbar({
             <Info size={16} />
           </button>
 
+          {/* Install PWA App (Auto-hidden when in standalone) */}
+          {isInstallable && (
+            <button
+              type="button"
+              onClick={onOpenInstall}
+              className="minimal-icon-btn nav-desktop-only"
+              title="Install Echoes App to home screen"
+              aria-label="Install App"
+            >
+              <Smartphone size={16} className="text-amber-400" />
+            </button>
+          )}
+
           {/* New Echo Minimal CTA */}
           <button
             type="button"
@@ -266,6 +282,20 @@ function Navbar({
               <Info size={15} />
               <span>About & Sanctuary Safety</span>
             </button>
+
+            {isInstallable && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenInstall();
+                  setMobileMenuOpen(false);
+                }}
+                className="mobile-drawer-link mobile-install-link"
+              >
+                <Smartphone size={15} className="text-amber-400" />
+                <span>Install Echoes App</span>
+              </button>
+            )}
 
             {onOpenBeer && (
               <button

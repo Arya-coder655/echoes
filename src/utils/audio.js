@@ -18,8 +18,9 @@ class SoundscapeEngine {
   }
 
   initAudioElements() {
+    const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
     if (!this.tracks.rain.element) {
-      const rain = new Audio('/rain.mp3');
+      const rain = new Audio(`${baseUrl}rain.mp3`);
       rain.loop = true;
       rain.preload = 'auto';
       rain.volume = this.tracks.rain.volume;
@@ -27,7 +28,7 @@ class SoundscapeEngine {
     }
 
     if (!this.tracks.thunder.element) {
-      const thunder = new Audio('/thunder.mp3');
+      const thunder = new Audio(`${baseUrl}thunder.mp3`);
       thunder.loop = true;
       thunder.preload = 'auto';
       thunder.volume = this.tracks.thunder.volume;

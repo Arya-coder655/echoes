@@ -12,6 +12,10 @@ const mimeTypes = {
   '.css': 'text/css',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webmanifest': 'application/manifest+json',
+  '.json': 'application/json',
   '.mp3': 'audio/mpeg'
 };
 
