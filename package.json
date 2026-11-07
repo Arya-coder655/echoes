@@ -28,12 +28,12 @@
     "mysql2": "^3.24.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vite-plugin-pwa": "^2.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "oxlint": "^1.79.0",
-    "vite-plugin-pwa": "^2.0.0"
+    "oxlint": "^1.79.0"
   }
 }
