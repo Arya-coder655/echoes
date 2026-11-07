@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Sparkles, 
   Flame, 
-  Hourglass, 
-  Mail, 
-  Bookmark, 
   Info, 
   Plus, 
   CloudRain, 
@@ -12,15 +8,10 @@ import {
   Tv, 
   Menu, 
   X,
-  Moon,
-  HeartPulse,
-  Zap,
-  Heart,
   Smartphone
 } from 'lucide-react';
 
 function Navbar({
-  activeCategory,
   onSelectCategory,
   onOpenComposer,
   onOpenAbout,
@@ -29,7 +20,6 @@ function Navbar({
   onOpenZenCinema,
   onOpenRitual,
   onOpenWell,
-  bookmarkCount,
   isAudioPlaying,
   sessionDuration,
   activeSouls = 24,
@@ -38,64 +28,27 @@ function Navbar({
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navItems = [
-    { id: 'all', label: 'All', icon: Sparkles },
-    { id: 'regret', label: 'Regret', icon: Flame },
-    { id: 'unsent', label: 'Unsent', icon: Mail },
-    { id: 'midnight-thoughts', label: 'Midnight', icon: Moon },
-    { id: 'healing-corner', label: 'Healing', icon: HeartPulse },
-    { id: 'random-chaos', label: 'Chaos', icon: Zap },
-    { id: 'last-words', label: 'Farewells', icon: Hourglass },
-    { id: 'love-notes', label: 'Love', icon: Heart },
-    { id: 'bookmarks', label: 'Saved', icon: Bookmark, badge: bookmarkCount }
-  ];
-
-  const handleNavClick = (id) => {
-    onSelectCategory(id);
-    setMobileMenuOpen(false);
-    window.scrollTo({ top: 380, behavior: 'smooth' });
+  const handleBrandClick = () => {
+    onSelectCategory?.('all');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <header className="minimal-navbar-wrapper">
       <div className="minimal-navbar">
-        {/* Brand: "Echoes" only */}
-        <div 
+        {/* Brand: "Echoes" */}
+        <button 
+          type="button"
           className="minimal-brand" 
-          onClick={() => {
-            onSelectCategory('all');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          title="Echoes"
+          onClick={handleBrandClick}
+          title="Echoes Sanctuary — Return to Top"
+          aria-label="Echoes Home"
         >
           <span className="brand-dot-pulse" />
           <span className="brand-text-single">Echoes</span>
-        </div>
+        </button>
 
-        {/* Center: Minimal Category Links */}
-        <nav className="minimal-desktop-nav">
-          <div className="nav-capsule">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeCategory === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`minimal-nav-link ${isActive ? 'active' : ''}`}
-                >
-                  <Icon size={14} className="nav-icon-subtle" />
-                  <span>{item.label}</span>
-                  {item.badge > 0 && (
-                    <span className="nav-count-badge">{item.badge}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
-        {/* Right: Minimal Actions */}
+        {/* Right: Sanctuary Actions & Interactive Portals */}
         <div className="minimal-actions">
           {/* Active Souls Live Indicator */}
           <div 
@@ -111,22 +64,22 @@ function Navbar({
           <button
             type="button"
             onClick={onOpenZenCinema}
-            className="minimal-icon-btn nav-desktop-only"
-            title="Enter Zen Cinema (Immersive Auto-Read Mode)"
+            className="minimal-icon-btn cinema-hover nav-desktop-only"
+            title="Enter Zen Cinema (Auto-Stream whispers)"
             aria-label="Zen Cinema"
           >
-            <Tv size={16} />
+            <Tv size={17} />
           </button>
 
           {/* Whispering Well */}
           <button
             type="button"
             onClick={onOpenWell}
-            className="minimal-icon-btn nav-desktop-only"
-            title="The Whispering Well (Drop a pebble)"
+            className="minimal-icon-btn well-hover nav-desktop-only"
+            title="The Whispering Well (Message in a Bottle)"
             aria-label="Whispering Well"
           >
-            <Compass size={16} />
+            <Compass size={17} />
           </button>
 
           {/* Sacred Hearth (Burn a Regret) */}
@@ -137,18 +90,18 @@ function Navbar({
             title="The Sacred Hearth (Burn a secret to ashes)"
             aria-label="Burn a Regret"
           >
-            <Flame size={16} className="text-amber-400" />
+            <Flame size={17} className="text-amber-400" />
           </button>
 
           {/* Real Rain Soundscape Lounge */}
           <button
             type="button"
             onClick={onOpenMixer}
-            className={`minimal-icon-btn ${isAudioPlaying ? 'active-audio' : ''}`}
+            className={`minimal-icon-btn audio-hover ${isAudioPlaying ? 'active-audio' : ''}`}
             title={isAudioPlaying ? `Rain Active (${sessionDuration}) — Click to customize soundscape` : "Open Rain & Ambience Sanctuary"}
             aria-label="Soundscape Lounge"
           >
-            <CloudRain size={16} className={isAudioPlaying ? "active-audio-icon text-sky-400" : ""} />
+            <CloudRain size={17} className={isAudioPlaying ? "active-audio-icon text-sky-400" : ""} />
             {isAudioPlaying && <span className="audio-live-dot" />}
           </button>
 
@@ -156,11 +109,11 @@ function Navbar({
           <button
             type="button"
             onClick={onOpenAbout}
-            className="minimal-icon-btn nav-desktop-only"
-            title="About Echoes"
+            className="minimal-icon-btn info-hover nav-desktop-only"
+            title="About Echoes & Sanctuary Safety"
             aria-label="About Echoes"
           >
-            <Info size={16} />
+            <Info size={17} />
           </button>
 
           {/* Install PWA App (Auto-hidden when in standalone) */}
@@ -168,11 +121,11 @@ function Navbar({
             <button
               type="button"
               onClick={onOpenInstall}
-              className="minimal-icon-btn nav-desktop-only"
-              title="Install Echoes App to home screen"
+              className="minimal-icon-btn install-hover nav-desktop-only"
+              title="Install Echoes Sanctuary App"
               aria-label="Install App"
             >
-              <Smartphone size={16} className="text-amber-400" />
+              <Smartphone size={17} className="text-amber-400" />
             </button>
           )}
 
@@ -181,12 +134,14 @@ function Navbar({
             type="button"
             onClick={onOpenComposer}
             className="minimal-cta-btn"
+            title="Whisper an Unspoken Thought"
+            aria-label="Echo a thought"
           >
-            <Plus size={15} />
+            <Plus size={16} />
             <span>Echo</span>
           </button>
 
-          {/* Mobile Hamburger Menu */}
+          {/* Mobile Hamburger Menu Toggle */}
           <button
             className="minimal-mobile-toggle"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -203,26 +158,6 @@ function Navbar({
           <div className="mobile-souls-status">
             <span className="candle-flicker">🕯️</span>
             <span><b>{activeSouls} Active Souls</b> present in sanctuary</span>
-          </div>
-
-          <div className="mobile-nav-pills-grid">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeCategory === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`mobile-pill-btn ${isActive ? 'active' : ''}`}
-                >
-                  <Icon size={16} />
-                  <span>{item.label}</span>
-                  {item.badge > 0 && (
-                    <span className="nav-count-badge">{item.badge}</span>
-                  )}
-                </button>
-              );
-            })}
           </div>
 
           <div className="mobile-interactive-links">
@@ -267,7 +202,7 @@ function Navbar({
               className="mobile-feature-row"
             >
               <CloudRain size={16} className="text-cyan-400" />
-              <span>Rain & Soundscape Mixer {isAudioPlaying ? '(Playing)' : ''}</span>
+              <span>Rain & Soundscape Mixer {isAudioPlaying ? `(${sessionDuration})` : ''}</span>
             </button>
           </div>
 

@@ -542,7 +542,6 @@ export default function App() {
 
       {/* Floating Minimal Navbar */}
       <Navbar
-        activeCategory={activeCategory}
         onSelectCategory={setActiveCategory}
         onOpenComposer={handleOpenComposer}
         onOpenAbout={handleOpenAbout}
@@ -551,7 +550,6 @@ export default function App() {
         onOpenZenCinema={handleOpenZenCinema}
         onOpenRitual={handleOpenRitual}
         onOpenWell={handleOpenWell}
-        bookmarkCount={bookmarks.length}
         isAudioPlaying={isAudioPlaying}
         sessionDuration={sessionDuration}
         activeSouls={activeSouls}
