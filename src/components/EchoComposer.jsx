@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, 
   Send, 
@@ -18,7 +18,11 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
   const [selectedThemeId, setSelectedThemeId] = useState('crimson-regret');
   const [imagePreview, setImagePreview] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 768 : true));
+
+  const formRef = useRef(null);
+  const textareaRef = useRef(null);
 
   if (!isOpen) return null;
 
@@ -45,29 +49,51 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
     setImagePreview('');
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
 
-    if (!message.trim()) {
-      setError('Please write an unspoken word or message.');
+    if (isSubmitting) return;
+
+    if (!message || !message.trim()) {
+      const err = 'Please write an unspoken word or message.';
+      setError(err);
+      if (typeof onToast === 'function') onToast(err);
+      formRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      textareaRef.current?.focus();
       return;
     }
 
     if (message.trim().length < 5) {
-      setError('Message should be at least 5 characters long.');
+      const err = 'Message should be at least 5 characters long.';
+      setError(err);
+      if (typeof onToast === 'function') onToast(err);
+      formRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      textareaRef.current?.focus();
       return;
     }
 
     if (message.trim().length > 2000) {
-      setError('Message exceeds 2,000 characters.');
+      const err = 'Message exceeds 2,000 characters.';
+      setError(err);
+      if (typeof onToast === 'function') onToast(err);
+      formRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     const linkMatches = message.match(/(http:\/\/|https:\/\/|www\.)\S+/gi);
     if (linkMatches && linkMatches.length > 2) {
-      setError('Echoes is an anonymous sanctuary for reflections, not for links or advertising.');
+      const err = 'Echoes is an anonymous sanctuary for reflections, not for links or advertising.';
+      setError(err);
+      if (typeof onToast === 'function') onToast(err);
+      formRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+
+    setError('');
+    setIsSubmitting(true);
 
     const newPost = {
       id: `ECHO-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -83,22 +109,39 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
       comments: []
     };
 
-    onPublish(newPost);
-
-    // Fire subtle celebratory particle effect
     try {
-      confetti({
-        particleCount: 40,
-        spread: 60,
-        origin: { y: 0.7 },
-        colors: [currentTheme.color, '#ffffff', currentTheme.secondary]
-      });
-    } catch (err) {
-      // safe fallback if confetti fails
-    }
+      if (typeof onPublish === 'function') {
+        await Promise.resolve(onPublish(newPost));
+      }
 
-    onToast('Your echo has been released into the sanctuary.');
-    onClose();
+      // Fire subtle celebratory particle effect
+      try {
+        confetti({
+          particleCount: 40,
+          spread: 60,
+          origin: { y: 0.7 },
+          colors: [currentTheme.color, '#ffffff', currentTheme.secondary]
+        });
+      } catch (err) {
+        // safe fallback if confetti fails
+      }
+
+      if (typeof onToast === 'function') {
+        onToast('Your echo has been released into the sanctuary.');
+      }
+      if (typeof onClose === 'function') {
+        onClose();
+      }
+    } catch (err) {
+      console.error('Error publishing echo:', err);
+      const errMsg = 'Failed to release echo. Please try again.';
+      setError(errMsg);
+      if (typeof onToast === 'function') {
+        onToast(errMsg);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -133,7 +176,7 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
         {/* Form & Preview Split Body */}
         <div className="composer-split-body">
           {/* Input Form Column */}
-          <form onSubmit={handleSubmit} className="composer-form">
+          <form ref={formRef} onSubmit={handleSubmit} noValidate className="composer-form">
             {error && (
               <div className="composer-error-banner">
                 <AlertCircle size={16} />
@@ -183,6 +226,7 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
                 <span className="char-count">{message.length}/600</span>
               </div>
               <textarea
+                ref={textareaRef}
                 placeholder="What did you never get the courage to say? What do you carry in your chest?..."
                 value={message}
                 onChange={(e) => {
@@ -191,7 +235,6 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
                 }}
                 maxLength={600}
                 className="composer-textarea"
-                required
               />
             </div>
 
@@ -261,9 +304,15 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
                 <button type="button" onClick={onClose} className="cancel-btn">
                   Discard
                 </button>
-                <button type="submit" className="publish-btn">
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="publish-btn"
+                  aria-label="Release Echo"
+                >
                   <Send size={16} />
-                  <span>Release Echo</span>
+                  <span>{isSubmitting ? 'Releasing...' : 'Release Echo'}</span>
                 </button>
               </div>
             </div>
