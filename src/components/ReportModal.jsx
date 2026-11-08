@@ -19,7 +19,12 @@ export default function ReportModal({ isOpen, echo, onClose, onToast, onReportSu
   if (!isOpen || !echo) return null;
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+    if (isSubmitting) return;
+
     setIsSubmitting(true);
 
     const chosenLabel = REPORT_REASONS.find((r) => r.id === selectedReason)?.label || selectedReason;
@@ -75,7 +80,7 @@ export default function ReportModal({ isOpen, echo, onClose, onToast, onReportSu
             <p>Thank you for keeping our sanctuary safe, kind, and compassionate.</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="report-form">
+          <form onSubmit={handleSubmit} noValidate className="report-form">
             <div className="report-preview-box">
               <span className="report-preview-quote">“{echo.message.slice(0, 110)}{echo.message.length > 110 ? '...' : ''}”</span>
             </div>
@@ -123,9 +128,11 @@ export default function ReportModal({ isOpen, echo, onClose, onToast, onReportSu
                 Cancel
               </button>
               <button 
-                type="submit" 
+                type="button" 
+                onClick={handleSubmit}
                 disabled={isSubmitting}
                 className="report-submit-btn"
+                aria-label="Submit Report"
               >
                 <AlertTriangle size={15} />
                 <span>{isSubmitting ? 'Submitting...' : 'Submit Report'}</span>

@@ -10,8 +10,11 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
   if (!isOpen) return null;
 
   const handleBurn = (e) => {
-    e.preventDefault();
-    if (!secretText.trim()) return;
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+    if (isBurning || !secretText.trim()) return;
 
     setIsBurning(true);
 
@@ -61,7 +64,7 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
 
         <div className="ritual-body">
           {!hasBurned ? (
-            <form onSubmit={handleBurn} className="ritual-form">
+            <form onSubmit={handleBurn} noValidate className="ritual-form">
               <p className="ritual-prompt">
                 Some words are not meant to be read by human eyes. Write your deepest guilt, 
                 unspoken heartbreak, or painful secret below. Once burned, it will be destroyed forever.
@@ -75,7 +78,6 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
                   className="parchment-textarea"
                   maxLength={500}
                   disabled={isBurning}
-                  required
                 />
                 {isBurning && (
                   <div className="fire-overlay">
@@ -90,9 +92,11 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
                   <Feather size={14} /> Never saved to any database. Completely ephemeral.
                 </span>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleBurn}
                   disabled={isBurning || !secretText.trim()}
                   className="burn-ignite-btn"
+                  aria-label="Ignite and burn reflection"
                 >
                   <Flame size={16} />
                   <span>{isBurning ? 'Consuming by Fire...' : 'Ignite & Let Go Forever'}</span>

@@ -19,7 +19,10 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment }) 
   if (!isOpen || !echo) return null;
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
     if (!commentText.trim()) return;
 
     onAddComment(echo.id, commentText.trim());
@@ -76,7 +79,7 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment }) 
         </div>
 
         {/* Comment Input Footer */}
-        <form onSubmit={handleSubmit} className="drawer-input-form">
+        <form onSubmit={handleSubmit} noValidate className="drawer-input-form">
           <div className="drawer-input-wrapper">
             <input
               type="text"
@@ -87,10 +90,12 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment }) 
               maxLength={280}
             />
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={!commentText.trim()}
               className="drawer-send-btn"
               title="Send reply"
+              aria-label="Send reply"
             >
               <Send size={16} />
             </button>

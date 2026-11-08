@@ -173,9 +173,12 @@ export default function AdminDashboardModal({ isOpen, onClose, onToast, echoes =
 
   // Login Handler
   const handleLogin = async (e) => {
-    e.preventDefault();
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
     const cleanPin = pinInput.trim();
-    if (!cleanPin) return;
+    if (!cleanPin || loading) return;
 
     setLoading(true);
     setAuthError('');
@@ -505,7 +508,7 @@ export default function AdminDashboardModal({ isOpen, onClose, onToast, echoes =
                 Protected space for Sanctuary Guardians. Please enter your secret PIN to access the moderation console.
               </p>
 
-              <form onSubmit={handleLogin} className="admin-login-form">
+              <form onSubmit={handleLogin} noValidate className="admin-login-form">
                 <div className="admin-input-group">
                   <input
                     type="password"
@@ -516,9 +519,11 @@ export default function AdminDashboardModal({ isOpen, onClose, onToast, echoes =
                     autoFocus
                   />
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleLogin}
                     className="admin-login-submit-btn"
                     disabled={loading || !pinInput.trim()}
+                    aria-label="Unlock Guardian Console"
                   >
                     {loading ? 'Verifying...' : 'Unlock'}
                   </button>
