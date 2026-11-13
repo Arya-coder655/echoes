@@ -22,7 +22,6 @@ function Hero({
   onOpenMixer, 
   onOpenZenCinema, 
   onOpenRitual, 
-  onOpenWell,
   activeSouls = 24
 }) {
   const [quoteIndex, setQuoteIndex] = useState(0);

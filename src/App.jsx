@@ -28,7 +28,6 @@ const BeerEasterEggModal = lazy(() => import('./components/BeerEasterEggModal'))
 const SoundscapeMixerModal = lazy(() => import('./components/SoundscapeMixerModal'));
 const ZenCinemaModal = lazy(() => import('./components/ZenCinemaModal'));
 const CatharsisRitualModal = lazy(() => import('./components/CatharsisRitualModal'));
-const WhisperingWellModal = lazy(() => import('./components/WhisperingWellModal'));
 const ReportModal = lazy(() => import('./components/ReportModal'));
 const AdminDashboardModal = lazy(() => import('./components/AdminDashboardModal'));
 const InstallAppModal = lazy(() => import('./components/InstallAppModal'));
@@ -106,7 +105,6 @@ export default function App() {
   const [mixerOpen, setMixerOpen] = useState(false);
   const [zenCinemaOpen, setZenCinemaOpen] = useState(false);
   const [ritualOpen, setRitualOpen] = useState(false);
-  const [wellOpen, setWellOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [reportEchoTarget, setReportEchoTarget] = useState(null);
   const [isDbConnected, setIsDbConnected] = useState(false);
@@ -455,7 +453,6 @@ export default function App() {
   const handleOpenMixer = useCallback(() => setMixerOpen(true), []);
   const handleOpenZenCinema = useCallback(() => setZenCinemaOpen(true), []);
   const handleOpenRitual = useCallback(() => setRitualOpen(true), []);
-  const handleOpenWell = useCallback(() => setWellOpen(true), []);
   const handleOpenAbout = useCallback(() => setAboutOpen(true), []);
   const handleOpenBeer = useCallback(() => setBeerModalOpen(true), []);
   const handleCloseAdmin = useCallback(() => {
@@ -549,7 +546,6 @@ export default function App() {
         onOpenMixer={handleOpenMixer}
         onOpenZenCinema={handleOpenZenCinema}
         onOpenRitual={handleOpenRitual}
-        onOpenWell={handleOpenWell}
         isAudioPlaying={isAudioPlaying}
         sessionDuration={sessionDuration}
         activeSouls={activeSouls}
@@ -565,7 +561,6 @@ export default function App() {
           onOpenMixer={handleOpenMixer}
           onOpenZenCinema={handleOpenZenCinema}
           onOpenRitual={handleOpenRitual}
-          onOpenWell={handleOpenWell}
           activeSouls={activeSouls}
         />
 
@@ -742,7 +737,6 @@ export default function App() {
                 <li><button type="button" onClick={handleOpenMixer}>Rain & Soundscape Mixer</button></li>
                 <li><button type="button" onClick={handleOpenZenCinema}>Zen Cinema (Auto-Stream)</button></li>
                 <li><button type="button" onClick={handleOpenRitual}>The Sacred Hearth (Burn to Ash)</button></li>
-                <li><button type="button" onClick={handleOpenWell}>The Whispering Well</button></li>
                 <li><button type="button" onClick={openInstallModal}>📱 Install Echoes App</button></li>
               </ul>
             </div>
@@ -921,18 +915,6 @@ export default function App() {
           <CatharsisRitualModal
             isOpen={ritualOpen}
             onClose={() => setRitualOpen(false)}
-            onToast={showToast}
-          />
-        </Suspense>
-      )}
-
-      {/* The Whispering Well (Message in a Bottle) */}
-      {wellOpen && (
-        <Suspense fallback={<SanctuaryModalFallback />}>
-          <WhisperingWellModal
-            isOpen={wellOpen}
-            echoes={echoes}
-            onClose={() => setWellOpen(false)}
             onToast={showToast}
           />
         </Suspense>

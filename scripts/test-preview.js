@@ -109,7 +109,7 @@ server.listen(PORT, async () => {
       return res?.result?.value;
     }
 
-    console.log('\n🧪 --- STARTING 11-MODAL COMPREHENSIVE TEST SUITE ---');
+    console.log('\n🧪 --- STARTING 10-MODAL COMPREHENSIVE TEST SUITE ---');
 
     const testCases = [
       {
@@ -125,13 +125,7 @@ server.listen(PORT, async () => {
         closeSelector: '.zen-cinema-close'
       },
       {
-        name: '3. Whispering Well Modal',
-        openSelector: 'button[aria-label="Whispering Well"]',
-        expectedSelector: '.well-modal-backdrop',
-        closeSelector: '.well-close-btn'
-      },
-      {
-        name: '4. Sacred Hearth (Catharsis Ritual)',
+        name: '3. Sacred Hearth (Catharsis Ritual)',
         openSelector: 'button[aria-label="Burn a Regret"]',
         expectedSelector: '.ritual-modal-backdrop',
         closeSelector: '.ritual-close-btn'

@@ -3,7 +3,6 @@ import {
   Flame, 
   Plus, 
   CloudRain, 
-  Compass, 
   Tv, 
   Menu, 
   X,
@@ -18,7 +17,6 @@ function Navbar({
   onOpenMixer,
   onOpenZenCinema,
   onOpenRitual,
-  onOpenWell,
   isAudioPlaying,
   sessionDuration,
   activeSouls = 24,
@@ -58,17 +56,6 @@ function Navbar({
             aria-label="Zen Cinema"
           >
             <Tv size={17} />
-          </button>
-
-          {/* Whispering Well */}
-          <button
-            type="button"
-            onClick={onOpenWell}
-            className="minimal-icon-btn well-hover nav-desktop-only"
-            title="The Whispering Well (Message in a Bottle)"
-            aria-label="Whispering Well"
-          >
-            <Compass size={17} />
           </button>
 
           {/* Sacred Hearth (Burn a Regret) */}
@@ -143,17 +130,6 @@ function Navbar({
             >
               <Tv size={16} className="text-sky-400" />
               <span>Enter Zen Cinema (Auto-Stream)</span>
-            </button>
-
-            <button
-              onClick={() => {
-                onOpenWell();
-                setMobileMenuOpen(false);
-              }}
-              className="mobile-feature-row"
-            >
-              <Compass size={16} className="text-indigo-400" />
-              <span>The Whispering Well</span>
             </button>
 
             <button

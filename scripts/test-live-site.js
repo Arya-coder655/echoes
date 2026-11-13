@@ -72,12 +72,12 @@ try {
     return res?.result?.value;
   }
 
-  console.log('\n🧪 --- AUDITING LIVE GITHUB PAGES: ALL 11 MODALS ---');
+  console.log('\n🧪 --- AUDITING LIVE GITHUB PAGES: ALL 10 MODALS ---');
 
   const testCases = [
     {
       name: '1. About Modal',
-      openSelector: 'button[aria-label="About Echoes"]',
+      openSelector: '.footer-about-pill-btn',
       expectedSelector: '.about-modal-backdrop',
       closeSelector: '.about-close-btn'
     },
@@ -88,13 +88,7 @@ try {
       closeSelector: '.zen-cinema-close'
     },
     {
-      name: '3. Whispering Well Modal',
-      openSelector: 'button[aria-label="Whispering Well"]',
-      expectedSelector: '.well-modal-backdrop',
-      closeSelector: '.well-close-btn'
-    },
-    {
-      name: '4. Sacred Hearth (Catharsis Ritual)',
+      name: '3. Sacred Hearth (Catharsis Ritual)',
       openSelector: 'button[aria-label="Burn a Regret"]',
       expectedSelector: '.ritual-modal-backdrop',
       closeSelector: '.ritual-close-btn'
