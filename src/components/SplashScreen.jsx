@@ -18,8 +18,21 @@ export default function SplashScreen({ isReady = true, onFinish, minDuration = 1
   useEffect(() => {
     if (!isReady) return;
 
+    // Detect if running as installed standalone PWA app on mobile/desktop
+    const isStandalone = typeof window !== 'undefined' && (
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes('android-app://')
+    );
+
+    // In installed PWA mode, Android OS / WebAPK already displays the native splash
+    // screen while launching the process. We use a shorter, seamless handoff duration (450ms)
+    // so the user experiences an instant, continuous entrance into the sanctuary
+    // rather than waiting through two sequential full-length loading screens.
+    const effectiveMinDuration = isStandalone ? 450 : minDuration;
+
     const elapsed = Date.now() - mountTimeRef.current;
-    const remaining = Math.max(0, minDuration - elapsed);
+    const remaining = Math.max(0, effectiveMinDuration - elapsed);
 
     let unmountTimer;
     const fadeTimer = setTimeout(() => {

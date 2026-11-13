@@ -17,7 +17,7 @@ const htmlContent = `
   <meta charset="utf-8">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0E0E19; overflow: hidden; }
+    body { background: #000000; overflow: hidden; }
 
     /* Container for 512x512 standard */
     #icon-512 {
@@ -26,7 +26,7 @@ const htmlContent = `
       position: absolute;
       top: 0;
       left: 0;
-      background: #0E0E19;
+      background: #000000;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -45,7 +45,7 @@ const htmlContent = `
       position: absolute;
       top: 0;
       left: 0;
-      background: #0E0E19;
+      background: #000000;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -57,25 +57,26 @@ const htmlContent = `
       object-fit: cover;
     }
 
-    /* Container for 512x512 maskable (with 80% safe zone padding) */
+    /* Container for 512x512 maskable (with 80% safe zone, pure black background, seamless) */
     #icon-maskable-512 {
       width: 512px;
       height: 512px;
       position: absolute;
       top: 0;
       left: 0;
-      background: #0E0E19;
+      background: #000000;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
     }
     #icon-maskable-512 .art-inner {
-      width: 410px;
-      height: 410px;
-      border-radius: 40px;
+      width: 420px;
+      height: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       overflow: hidden;
-      box-shadow: 0 0 35px rgba(251, 101, 20, 0.4);
     }
     #icon-maskable-512 img {
       width: 100%;
@@ -90,7 +91,7 @@ const htmlContent = `
       position: absolute;
       top: 0;
       left: 0;
-      background: #0E0E19;
+      background: #000000;
       display: flex;
       align-items: center;
       justify-content: center;

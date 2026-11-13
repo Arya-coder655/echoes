@@ -24,8 +24,8 @@ async function runPwaTest() {
 
   if (manifest.name !== 'Echoes of the Heart') throw new Error('Invalid manifest name');
   if (manifest.short_name !== 'Echoes') throw new Error('Invalid short_name');
-  if (manifest.theme_color !== '#0E0E19') throw new Error('Invalid theme_color');
-  if (manifest.background_color !== '#0E0E19') throw new Error('Invalid background_color');
+  if (manifest.theme_color !== '#000000') throw new Error('Invalid theme_color');
+  if (manifest.background_color !== '#000000') throw new Error('Invalid background_color');
   if (manifest.display !== 'standalone') throw new Error('Invalid display mode');
   if (manifest.start_url !== '/echoes/') throw new Error('Invalid start_url');
   if (manifest.scope !== '/echoes/') throw new Error('Invalid scope');

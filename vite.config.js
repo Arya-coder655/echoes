@@ -26,8 +26,8 @@ export default defineConfig({
         name: 'Echoes of the Heart',
         short_name: 'Echoes',
         description: 'An anonymous sanctuary to whisper silent regrets, unposted love letters, and sacred farewells into the cosmos.',
-        theme_color: '#0E0E19',
-        background_color: '#0E0E19',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
         orientation: 'portrait-primary',
         start_url: '/echoes/',
@@ -37,12 +37,14 @@ export default defineConfig({
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
             src: 'pwa-maskable-512x512.png',
