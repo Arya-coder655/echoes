@@ -7002,18 +7002,45 @@ button {
 
 .ritual-modal-panel {
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* Allows upward ash & smoke drift */
   transition: box-shadow 0.4s ease, border-color 0.4s ease;
 }
 
 .ritual-modal-panel.whole-card-burning {
-  border-color: #ff5722 !important;
-  box-shadow: 0 0 60px rgba(255, 87, 34, 0.65), 0 0 100px rgba(255, 42, 0, 0.35) !important;
+  border-color: #FC2904 !important;
+  box-shadow: 0 0 30px rgba(252, 41, 4, 0.65), 0 0 65px rgba(255, 112, 79, 0.4), inset 0 0 35px rgba(252, 41, 4, 0.25) !important;
+  animation: card-perimeter-fire 2.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes card-perimeter-fire {
+  0% {
+    border-color: rgba(252, 41, 4, 0.35);
+    box-shadow: 0 0 15px rgba(252, 41, 4, 0.3), inset 0 0 10px rgba(252, 41, 4, 0.1);
+  }
+  16% {
+    /* Edges catching fire with glowing #FC2904 and #FF704F */
+    border-color: #FC2904;
+    box-shadow: 0 0 35px rgba(252, 41, 4, 0.75), 0 0 70px rgba(255, 112, 79, 0.5), inset 0 0 35px rgba(252, 41, 4, 0.3);
+  }
+  38% {
+    /* Glowing incandescent burn edge */
+    border-color: #FF704F;
+    box-shadow: 0 0 50px rgba(255, 112, 79, 0.85), 0 0 95px rgba(252, 41, 4, 0.65), inset 0 0 55px rgba(252, 41, 4, 0.4);
+  }
+  75% {
+    /* Charred carbon edge crumbling into ash */
+    border-color: rgba(113, 113, 122, 0.6);
+    box-shadow: 0 0 25px rgba(252, 41, 4, 0.3), 0 0 50px rgba(28, 25, 23, 0.7);
+  }
+  100% {
+    border-color: transparent;
+    box-shadow: none;
+  }
 }
 
 .thanos-card-ash-overlay {
   position: absolute;
-  inset: -15px;
+  inset: 0;
   pointer-events: none;
   z-index: 1000;
   overflow: visible;
@@ -7021,9 +7048,7 @@ button {
 
 .thanos-card-ash-canvas {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  pointer-events: none;
   display: block;
 }
 
@@ -7035,9 +7060,24 @@ button {
 
 .whole-card-disintegrating {
   position: relative;
-  animation: whole-card-thanos-burn 2.6s cubic-bezier(0.35, 0, 0.2, 1) forwards;
+  animation: whole-card-thanos-burn 2.8s cubic-bezier(0.35, 0, 0.2, 1) forwards;
   transform-origin: center center;
   pointer-events: none;
+}
+
+/* Paper charring and darkening when ignited */
+.whole-card-burning .parchment-container {
+  background: rgba(18, 15, 14, 0.95) !important;
+  border-color: #FF704F !important;
+  box-shadow: inset 0 0 35px rgba(252, 41, 4, 0.35), 0 0 20px rgba(255, 112, 79, 0.25) !important;
+  transition: all 0.5s ease;
+}
+
+.whole-card-burning .parchment-textarea {
+  color: #ffaa77 !important;
+  text-shadow: 0 0 8px rgba(252, 41, 4, 0.6);
+  letter-spacing: 0.5px;
+  transition: all 0.8s ease;
 }
 
 @keyframes whole-card-thanos-burn {
@@ -7047,35 +7087,56 @@ button {
     filter: contrast(1) brightness(1);
     transform: scale(1);
   }
-  12% {
-    filter: contrast(1.2) brightness(1.15) drop-shadow(0 0 25px rgba(255, 107, 0, 0.6));
-    transform: scale(0.996);
+  14% {
+    /* Edges catching fire with red/orange glow */
+    filter: contrast(1.15) brightness(1.12) drop-shadow(0 0 22px rgba(252, 41, 4, 0.6));
+    transform: scale(0.998);
   }
   32% {
-    -webkit-mask-image: linear-gradient(to right, transparent 15%, rgba(0, 0, 0, 0.3) 28%, black 45%);
-    mask-image: linear-gradient(to right, transparent 15%, rgba(0, 0, 0, 0.3) 28%, black 45%);
-    filter: contrast(1.35) brightness(1.25) drop-shadow(0 0 40px rgba(255, 60, 0, 0.75));
+    /* Darken paper with realistic charring, carbon soot, and burning seam */
+    -webkit-mask-image: linear-gradient(to right, transparent 10%, rgba(28, 25, 23, 0.4) 22%, black 42%);
+    mask-image: linear-gradient(to right, transparent 10%, rgba(28, 25, 23, 0.4) 22%, black 42%);
+    filter: contrast(1.35) brightness(0.9) sepia(0.25) drop-shadow(0 0 40px rgba(255, 112, 79, 0.8));
   }
   55% {
-    -webkit-mask-image: linear-gradient(to right, transparent 40%, rgba(0, 0, 0, 0.2) 55%, black 72%);
-    mask-image: linear-gradient(to right, transparent 40%, rgba(0, 0, 0, 0.2) 55%, black 72%);
-    filter: contrast(1.4) brightness(1.3);
+    /* Paper breaks into irregular ash particles, sweeping across the card */
+    -webkit-mask-image: linear-gradient(to right, transparent 38%, rgba(28, 25, 23, 0.25) 54%, black 72%);
+    mask-image: linear-gradient(to right, transparent 38%, rgba(28, 25, 23, 0.25) 54%, black 72%);
+    filter: contrast(1.4) brightness(0.8) grayscale(0.4);
+    opacity: 0.75;
   }
   78% {
-    -webkit-mask-image: linear-gradient(to right, transparent 68%, rgba(0, 0, 0, 0.1) 84%, black 95%);
-    mask-image: linear-gradient(to right, transparent 68%, rgba(0, 0, 0, 0.1) 84%, black 95%);
-    opacity: 0.4;
+    /* Ash flakes drifting away into the air */
+    -webkit-mask-image: linear-gradient(to right, transparent 65%, rgba(0, 0, 0, 0.1) 84%, black 95%);
+    mask-image: linear-gradient(to right, transparent 65%, rgba(0, 0, 0, 0.1) 84%, black 95%);
+    opacity: 0.35;
+    transform: scale(0.98) translateY(-4px);
   }
   94% {
-    -webkit-mask-image: linear-gradient(to right, transparent 94%, transparent 100%);
-    mask-image: linear-gradient(to right, transparent 94%, transparent 100%);
-    opacity: 0.08;
+    /* Fading dust residue dissolving */
+    -webkit-mask-image: linear-gradient(to right, transparent 92%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 92%, transparent 100%);
+    opacity: 0.05;
+    transform: scale(0.96) translateY(-8px);
   }
   100% {
     -webkit-mask-image: linear-gradient(to right, transparent 100%, transparent 100%);
     mask-image: linear-gradient(to right, transparent 100%, transparent 100%);
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.95) translateY(-10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whole-card-disintegrating {
+    animation: simple-card-fade 0.7s ease forwards !important;
+    filter: none !important;
+  }
+  .ritual-modal-panel.whole-card-burning {
+    animation: none !important;
+  }
+  @keyframes simple-card-fade {
+    to { opacity: 0; }
   }
 }
 

@@ -42,7 +42,7 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
   };
 
   return (
-    <div className="ritual-modal-backdrop" onClick={onClose}>
+    <div className="ritual-modal-backdrop" onClick={isBurning ? undefined : onClose}>
       <div 
         className={`ritual-modal-panel ${isBurning ? 'whole-card-burning' : ''}`} 
         onClick={(e) => e.stopPropagation()}
@@ -51,7 +51,7 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
         <ThanosAshBurn 
           isBurning={isBurning} 
           onComplete={handleAshComplete} 
-          duration={2600} 
+          duration={2800} 
           isFullCard={true}
         />
 
@@ -107,10 +107,11 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
                     onClick={handleBurn}
                     disabled={isBurning || !secretText.trim()}
                     className={`burn-ignite-btn ${isBurning ? 'is-burning' : ''}`}
-                    aria-label="Ignite and let go forever"
+                    aria-label="Burn Letter"
+                    title="Burn Letter (Let Go Forever)"
                   >
                     <Flame size={16} />
-                    <span>{isBurning ? 'Disintegrating to Ash...' : 'Ignite & Let Go Forever'}</span>
+                    <span>{isBurning ? 'Disintegrating to Ash...' : 'Burn Letter'}</span>
                   </button>
                 </div>
               </form>
