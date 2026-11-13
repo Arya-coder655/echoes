@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Flame, Sparkles, RefreshCw, Feather } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import ThanosAshBurn from './ThanosAshBurn';
 
 export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
   const [secretText, setSecretText] = useState('');
@@ -18,25 +19,35 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
 
     setIsBurning(true);
 
-    // Fire ember particle effect
+    // Initial spark burst
     setTimeout(() => {
       try {
         confetti({
-          particleCount: 80,
+          particleCount: 50,
           angle: 90,
-          spread: 80,
-          origin: { y: 0.6 },
+          spread: 70,
+          origin: { y: 0.65 },
           colors: ['#fc2904', '#ff7a59', '#fbbf24', '#ffffff']
         });
       } catch (err) {}
-    }, 400);
+    }, 300);
+  };
 
-    setTimeout(() => {
-      setIsBurning(false);
-      setHasBurned(true);
-      setSecretText('');
-      onToast('Your burden was consumed by fire and returned to stardust.');
-    }, 2200);
+  const handleAshComplete = () => {
+    setIsBurning(false);
+    setHasBurned(true);
+    setSecretText('');
+    if (typeof onToast === 'function') {
+      onToast('Your burden was consumed by fire and dissolved into stardust.');
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    // Enter key (without Shift) triggers the ignite action
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleBurn();
+    }
   };
 
   const handleReset = () => {
@@ -67,22 +78,30 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
             <form onSubmit={handleBurn} noValidate className="ritual-form">
               <p className="ritual-prompt">
                 Some words are not meant to be read by human eyes. Write your deepest guilt, 
-                unspoken heartbreak, or painful secret below. Once burned, it will be destroyed forever.
+                unspoken heartbreak, or painful secret below. Once burned, it will disintegrate into dust forever.
               </p>
 
-              <div className={`parchment-container ${isBurning ? 'burning-embers' : ''}`}>
+              <div className={`parchment-container ${isBurning ? 'burning-embers thanos-disintegrating' : ''}`}>
                 <textarea
                   value={secretText}
                   onChange={(e) => setSecretText(e.target.value)}
-                  placeholder="Confess to the flames... (e.g. 'I still haven't forgiven myself for leaving without saying goodbye.')"
-                  className="parchment-textarea"
+                  onKeyDown={handleKeyDown}
+                  placeholder="Confess to the flames... (e.g. 'I still haven't forgiven myself for leaving without saying goodbye.') Press Enter to let go forever."
+                  className={`parchment-textarea ${isBurning ? 'thanos-text-dissolve' : ''}`}
                   maxLength={500}
                   disabled={isBurning}
                 />
+
+                {/* Thanos Snap Ash Burn Disintegration Overlay */}
+                <ThanosAshBurn 
+                  isBurning={isBurning} 
+                  onComplete={handleAshComplete} 
+                  duration={2400} 
+                />
+
                 {isBurning && (
                   <div className="fire-overlay">
-                    <div className="fire-particles" />
-                    <span className="fire-text-dissolve">Dissolving into ashes...</span>
+                    <span className="fire-text-dissolve">Disintegrating into ash...</span>
                   </div>
                 )}
               </div>
@@ -95,11 +114,11 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
                   type="button"
                   onClick={handleBurn}
                   disabled={isBurning || !secretText.trim()}
-                  className="burn-ignite-btn"
-                  aria-label="Ignite and burn reflection"
+                  className={`burn-ignite-btn ${isBurning ? 'is-burning' : ''}`}
+                  aria-label="Ignite and let go forever"
                 >
                   <Flame size={16} />
-                  <span>{isBurning ? 'Consuming by Fire...' : 'Ignite & Let Go Forever'}</span>
+                  <span>{isBurning ? 'Disintegrating to Ash...' : 'Ignite & Let Go Forever'}</span>
                 </button>
               </div>
             </form>

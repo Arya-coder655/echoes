@@ -306,3 +306,69 @@ class SoundscapeEngine {
 export const soundscape = new SoundscapeEngine();
 // Alias for backward compatibility
 export const ambientSound = soundscape;
+
+/**
+ * Procedural Audio Synthesizer for Thanos Ash Burn / Sacred Hearth
+ * Generates an evocative combustion burst, crackling embers, and rushing ash wind.
+ */
+export function playAshSnapSound() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    // 1. Crackling flame noise burst
+    const bufferSize = Math.floor(ctx.sampleRate * 2.2);
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    let last = 0.0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      data[i] = (last * 0.9) + (white * 0.1);
+      if (Math.random() < 0.006) {
+        data[i] += (Math.random() - 0.5) * 1.8; // ember snap
+      }
+      last = data[i];
+    }
+
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1400, ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(320, ctx.currentTime + 2.2);
+    filter.Q.setValueAtTime(2.2, ctx.currentTime);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.01, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.25);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.2);
+
+    noiseSource.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noiseSource.start();
+    noiseSource.stop(ctx.currentTime + 2.2);
+
+    // 2. Low-frequency combustion whoosh
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(120, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 1.8);
+
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(0.16, ctx.currentTime);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.8);
+
+    osc.connect(oscGain);
+    oscGain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 1.8);
+  } catch (err) {
+    // Non-fatal if audio autoplay is constrained
+  }
+}
