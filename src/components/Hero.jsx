@@ -112,16 +112,6 @@ function Hero({
               <span className="stat-label">Resonances Shared</span>
             </div>
           </div>
-
-          <div className="stat-card stat-card-souls">
-            <div className="stat-icon-wrap stat-souls">
-              <span className="candle-flicker-icon">🕯️</span>
-            </div>
-            <div className="stat-info">
-              <span className="stat-number">{activeSouls}</span>
-              <span className="stat-label">Active Souls</span>
-            </div>
-          </div>
         </div>
       </div>
     </section>
