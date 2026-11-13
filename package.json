@@ -16,6 +16,7 @@
     "test:preview": "npm run build && node scripts/test-preview.js",
     "test:pwa": "npm run build && node scripts/test-pwa.js",
     "test:burn": "npm run build && node scripts/test-thanos-burn.js",
+    "test:burn:mobile": "npm run build && node scripts/test-mobile-burn.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },

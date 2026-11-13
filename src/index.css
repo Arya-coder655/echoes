@@ -3212,6 +3212,16 @@ button {
   .ritual-modal-panel {
     padding: 20px 16px max(20px, env(safe-area-inset-bottom));
   }
+  .ritual-modal-panel.whole-card-burning {
+    border-radius: 20px 20px 0 0 !important;
+    border-bottom: none !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    box-shadow: 0 -12px 35px rgba(252, 41, 4, 0.75), 
+                -8px 0 25px rgba(255, 112, 79, 0.4), 
+                8px 0 25px rgba(255, 112, 79, 0.4), 
+                inset 0 0 35px rgba(252, 41, 4, 0.25) !important;
+  }
   .parchment-container {
     min-height: 130px;
   }
@@ -3228,6 +3238,20 @@ button {
   .ritual-hint {
     text-align: center;
     justify-content: center;
+  }
+
+  /* Mobile Toast: placed at top to avoid covering bottom sheet buttons */
+  .toast-notification-wrap {
+    top: calc(16px + env(safe-area-inset-top, 12px));
+    bottom: auto;
+    max-width: 92vw;
+  }
+  .toast-pill {
+    border-radius: 14px !important;
+    padding: 10px 16px !important;
+    font-size: 0.84rem !important;
+    line-height: 1.4 !important;
+    text-align: left !important;
   }
 
   /* Whispering Well Mobile */
@@ -7010,6 +7034,8 @@ button {
   border-color: #FC2904 !important;
   box-shadow: 0 0 30px rgba(252, 41, 4, 0.65), 0 0 65px rgba(255, 112, 79, 0.4), inset 0 0 35px rgba(252, 41, 4, 0.25) !important;
   animation: card-perimeter-fire 2.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  touch-action: none !important;
+  user-select: none !important;
 }
 
 @keyframes card-perimeter-fire {
@@ -7063,6 +7089,13 @@ button {
   animation: whole-card-thanos-burn 2.8s cubic-bezier(0.35, 0, 0.2, 1) forwards;
   transform-origin: center center;
   pointer-events: none;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  will-change: mask-image, -webkit-mask-image, opacity, transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Paper charring and darkening when ignited */
