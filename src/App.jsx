@@ -6,6 +6,9 @@ import SearchFilterBar from './components/SearchFilterBar';
 import EchoCard from './components/EchoCard';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
+import SplashScreen from './components/SplashScreen';
+import CircleLoader from './components/CircleLoader';
+import PullToRefresh from './components/PullToRefresh';
 import { INITIAL_ECHOES } from './data/initialEchoes';
 import { soundscape } from './utils/audio';
 import { usePwaInstall } from './hooks/usePwaInstall';
@@ -32,15 +35,14 @@ const ReportModal = lazy(() => import('./components/ReportModal'));
 const AdminDashboardModal = lazy(() => import('./components/AdminDashboardModal'));
 const InstallAppModal = lazy(() => import('./components/InstallAppModal'));
 
-// Sanctuary Elegant Glassmorphic Loading Fallback
+// Sanctuary Elegant Pure Black Circle Loader Fallback
 function SanctuaryModalFallback() {
   return (
-    <div className="sanctuary-lazy-fallback-backdrop" role="status" aria-label="Loading sanctuary portal">
-      <div className="sanctuary-lazy-fallback-card">
-        <div className="sanctuary-fallback-spinner" />
-        <span className="sanctuary-fallback-text">Opening sanctuary portal...</span>
-      </div>
-    </div>
+    <CircleLoader 
+      message="Opening sanctuary portal..." 
+      subtext="A quiet moment of reflection" 
+      isFullScreen={true} 
+    />
   );
 }
 
@@ -138,12 +140,12 @@ export default function App() {
     }));
   };
 
+  const [isAppReady, setIsAppReady] = useState(false);
+
   // Fetch real echoes from MySQL database on mount & sync in real-time
-  useEffect(() => {
-    let isMounted = true;
-    async function loadDatabaseEchoes() {
+  const loadDatabaseEchoes = useCallback(async () => {
+    try {
       const result = await fetchEchoesFromDb();
-      if (!isMounted) return;
       if (result.data && Array.isArray(result.data)) {
         let currentReported = [];
         try {
@@ -156,8 +158,25 @@ export default function App() {
       } else {
         setIsDbConnected(false);
       }
+    } catch {
+      setIsDbConnected(false);
+    } finally {
+      setIsAppReady(true);
     }
+  }, []);
 
+  const handlePullRefresh = useCallback(async () => {
+    await Promise.all([
+      loadDatabaseEchoes(),
+      sendSoulHeartbeat().then((res) => {
+        if (res && res.isOnline && typeof res.activeSouls === 'number') {
+          setActiveSouls(res.activeSouls);
+        }
+      })
+    ]);
+  }, [loadDatabaseEchoes]);
+
+  useEffect(() => {
     loadDatabaseEchoes();
 
     // Auto-sync new posts from MySQL every 15 seconds
@@ -168,11 +187,10 @@ export default function App() {
     window.addEventListener('focus', handleFocus);
 
     return () => {
-      isMounted = false;
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [loadDatabaseEchoes]);
 
   // Synchronize Active Souls presence heartbeat
   useEffect(() => {
@@ -534,6 +552,9 @@ export default function App() {
 
   return (
     <div className="app-root">
+      {/* Modern Minimal Pure Black Splash Screen */}
+      <SplashScreen isReady={isAppReady} minDuration={1100} />
+
       {/* Background Animated Particles */}
       <AmbientBackground />
 
@@ -553,7 +574,8 @@ export default function App() {
         onOpenInstall={openInstallModal}
       />
 
-      <main className="main-content-wrapper">
+      <PullToRefresh onRefresh={handlePullRefresh}>
+        <main className="main-content-wrapper">
         {/* Poetic Hero Section with Experience Cards */}
         <Hero
           echoes={echoes}
@@ -664,6 +686,7 @@ export default function App() {
           )}
         </section>
       </main>
+      </PullToRefresh>
 
       {/* Floating Bottom Quick Action on Mobile */}
       <div className="mobile-bottom-bar">
