@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 /**
  * Modern Minimal Pure Black Splash Screen
@@ -8,28 +8,33 @@ import React, { useEffect, useState } from 'react';
 export default function SplashScreen({ isReady = true, onFinish, minDuration = 1200 }) {
   const [mounted, setMounted] = useState(true);
   const [isFading, setIsFading] = useState(false);
+  const mountTimeRef = useRef(Date.now());
+  const onFinishRef = useRef(onFinish);
 
   useEffect(() => {
-    // Ensure the splash screen stays visible for at least minDuration for premium brand feel
-    const startTime = Date.now();
+    onFinishRef.current = onFinish;
+  }, [onFinish]);
 
-    const checkAndDismiss = () => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, minDuration - elapsed);
+  useEffect(() => {
+    if (!isReady) return;
 
-      setTimeout(() => {
-        setIsFading(true);
-        setTimeout(() => {
-          setMounted(false);
-          onFinish?.();
-        }, 500); // 500ms fade-out transition
-      }, remaining);
+    const elapsed = Date.now() - mountTimeRef.current;
+    const remaining = Math.max(0, minDuration - elapsed);
+
+    let unmountTimer;
+    const fadeTimer = setTimeout(() => {
+      setIsFading(true);
+      unmountTimer = setTimeout(() => {
+        setMounted(false);
+        onFinishRef.current?.();
+      }, 500); // 500ms fade-out transition
+    }, remaining);
+
+    return () => {
+      clearTimeout(fadeTimer);
+      if (unmountTimer) clearTimeout(unmountTimer);
     };
-
-    if (isReady) {
-      checkAndDismiss();
-    }
-  }, [isReady, minDuration, onFinish]);
+  }, [isReady, minDuration]);
 
   if (!mounted) return null;
 

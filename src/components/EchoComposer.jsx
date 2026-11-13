@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { 
   X, 
   Send, 
@@ -88,7 +88,7 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
     }, 300);
   };
 
-  const handleAshBurnComplete = () => {
+  const handleAshBurnComplete = useCallback(() => {
     setIsBurningAsh(false);
     setIsBurnSuccess(true);
     setMessage('');
@@ -97,7 +97,7 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
     if (typeof onToast === 'function') {
       onToast('Consumed by sacred fire. Your message turned to ash without ever being posted.');
     }
-  };
+  }, [onToast]);
 
   const handleSubmit = async (e) => {
     if (e) {

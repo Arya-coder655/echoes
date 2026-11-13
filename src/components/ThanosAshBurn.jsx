@@ -26,27 +26,26 @@ export default function ThanosAshBurn({
   isFullCard = true 
 }) {
   const canvasRef = useRef(null);
+  const overlayRef = useRef(null);
   const animFrameId = useRef(null);
-  const [phase, setPhase] = useState('idle'); // 'idle' | 'igniting' | 'charring' | 'disintegrating' | 'dissolving'
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     if (!isBurning) {
-      setPhase('idle');
+      if (overlayRef.current) overlayRef.current.dataset.phase = 'idle';
       return;
     }
 
-    // Check for user reduced motion preference
+    // Hardware & accessibility inspection:
+    // Respects accessibility and high-refresh displays (e.g. Samsung 90Hz AMOLED)
+    // without ever prematurely killing or skipping the emotional release experience!
     const prefersReducedMotion = typeof window !== 'undefined' && 
       window.matchMedia && 
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReducedMotion) {
-      // Graceful gentle fade for accessibility
-      const timer = setTimeout(() => {
-        if (typeof onComplete === 'function') onComplete();
-      }, 700);
-      return () => clearTimeout(timer);
-    }
 
     // Trigger synthetic audio combustion whoosh & crackling ash wind
     playAshSnapSound();
@@ -84,15 +83,19 @@ export default function ThanosAshBurn({
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    // Responsive particle streaming configuration:
-    // Continually spawns particles per frame along the active burn front,
-    // recycling expired particles so the stream NEVER starves on mobile or desktop!
-    const targetActiveParticles = isMobile ? 180 : 340;
-    const spawnPerFrame = isMobile ? 5 : 10;
+    // Responsive particle streaming configuration optimized for 60Hz, 90Hz (Samsung A33), and 120Hz:
+    const targetActiveParticles = prefersReducedMotion ? 90 : (isMobile ? 160 : 320);
+    const baseSpawnRate = prefersReducedMotion ? 3 : (isMobile ? 5 : 9);
 
     // Burning color palette strictly adhering to design requirements
     // 1. Incandescent embers: #FC2904, #FF704F, warm amber, white-hot spark
-    const emberColors = ['#FC2904', '#FF704F', '#ff4500', '#ff8c00', '#ffd000', '#ffffff'];
+    const emberColors = [
+      { main: '#FC2904', halo: 'rgba(252, 41, 4, 0.35)' },
+      { main: '#FF704F', halo: 'rgba(255, 112, 79, 0.4)' },
+      { main: '#ff4500', halo: 'rgba(255, 69, 0, 0.35)' },
+      { main: '#ffaa00', halo: 'rgba(255, 170, 0, 0.45)' },
+      { main: '#ffffff', halo: 'rgba(255, 230, 180, 0.5)' }
+    ];
     // 2. Charred paper flakes: deep black charcoal, charred carbon, burnt ash
     const charcoalColors = ['#0c0a09', '#181514', '#1c1917', '#272320', '#3a3532', '#44403c'];
     // 3. Fine ash dust: grey ash, muted stone, drifting soot
@@ -103,6 +106,7 @@ export default function ThanosAshBurn({
     const particles = [];
     const startTime = performance.now();
     let lastTime = startTime;
+    let currentPhase = 'idle';
 
     // Helper: generate irregular polygon vertices for realistic jagged ash flakes
     const createAshPolygon = (radius) => {
@@ -119,49 +123,44 @@ export default function ThanosAshBurn({
       return vertices;
     };
 
-    // Helper: spawn ash, dust, embers, and smoke along the sweeping burn front
-    const spawnAshParticles = (burnLineX, progress) => {
-      // If we are over our target active budget, prune oldest faded particles
-      // to ensure fresh particles ALWAYS continue spawning along the advancing fire front!
+    // Continuous streaming particle generator normalized by delta time
+    const spawnAshParticles = (burnLineX, progress, dtNorm) => {
       while (particles.length > targetActiveParticles) {
         particles.shift();
       }
 
-      for (let i = 0; i < spawnPerFrame; i++) {
+      const spawnCount = Math.max(1, Math.round(baseSpawnRate * dtNorm));
+      for (let i = 0; i < spawnCount; i++) {
         const rand = Math.random();
-        let type, color, size, isEmber = false, vertices = null;
+        let type, color, haloColor = null, size, isEmber = false, vertices = null;
 
         const yNorm = Math.random();
-        // Position particles precisely along the active burn front with organic wave curvature
         const waveOffset = isMobile ? Math.sin(yNorm * Math.PI) * 16 : 0;
         const localX = padX + burnLineX + waveOffset + (Math.random() - 0.5) * 28;
         const localY = padTop + yNorm * cardH;
 
         if (rand < 0.28) {
-          // Tier 1: Glowing Embers (#FC2904, #FF704F, white-hot spark)
           type = 'ember';
           isEmber = true;
-          color = emberColors[Math.floor(Math.random() * emberColors.length)];
-          size = Math.random() * 2.6 + 1.2;
+          const chosen = emberColors[Math.floor(Math.random() * emberColors.length)];
+          color = chosen.main;
+          haloColor = chosen.halo;
+          size = Math.random() * 2.4 + 1.2;
         } else if (rand < 0.72) {
-          // Tier 2: Irregular Jagged Ash Flakes (Charcoal / Burnt Carbon)
           type = 'flake';
           color = charcoalColors[Math.floor(Math.random() * charcoalColors.length)];
-          size = Math.random() * 4.6 + 2.0;
+          size = Math.random() * 4.4 + 2.0;
           vertices = createAshPolygon(size);
         } else if (rand < 0.90) {
-          // Tier 3: Fine Ash Dust
           type = 'dust';
           color = dustColors[Math.floor(Math.random() * dustColors.length)];
           size = Math.random() * 1.8 + 0.8;
         } else {
-          // Tier 4: Subtle Smoke Wisps
           type = 'smoke';
           color = smokeColors[Math.floor(Math.random() * smokeColors.length)];
           size = Math.random() * 10 + 7;
         }
 
-        // Particle physics: natural thermal buoyancy, wind drift, aerodynamic drag
         const upwardSpeed = type === 'smoke' 
           ? Math.random() * 1.2 + 0.6 
           : type === 'ember' 
@@ -178,6 +177,7 @@ export default function ThanosAshBurn({
           size: size,
           baseSize: size,
           color: color,
+          haloColor: haloColor,
           type: type,
           isEmber: isEmber,
           vertices: vertices,
@@ -191,7 +191,6 @@ export default function ThanosAshBurn({
           angularSpeed: (Math.random() - 0.5) * 0.22,
           wobbleSpeed: Math.random() * 0.14 + 0.05,
           wobbleOffset: Math.random() * Math.PI * 2,
-          // 3D aspect ratio oscillation simulates flipping in air
           aspect: Math.random() * 0.5 + 0.75,
           life: 0
         });
@@ -203,32 +202,33 @@ export default function ThanosAshBurn({
     const render = (now) => {
       const elapsed = now - startTime;
       const progress = Math.min(1, elapsed / duration);
-      const dt = Math.min(34, now - lastTime) / 16.67; // Normalized frame delta (~1.0 at 60fps)
+      const rawDt = Math.min(50, now - lastTime);
+      const dt = rawDt / 16.67;
       lastTime = now;
 
-      // Update phase for CSS / orchestration
-      if (progress < 0.18) {
-        setPhase('igniting');
-      } else if (progress < 0.42) {
-        setPhase('charring');
-      } else if (progress < 0.82) {
-        setPhase('disintegrating');
-      } else {
-        setPhase('dissolving');
+      // Update phase via DOM dataset without triggering React component re-renders
+      let nextPhase = 'idle';
+      if (progress < 0.18) nextPhase = 'igniting';
+      else if (progress < 0.42) nextPhase = 'charring';
+      else if (progress < 0.82) nextPhase = 'disintegrating';
+      else nextPhase = 'dissolving';
+
+      if (currentPhase !== nextPhase) {
+        currentPhase = nextPhase;
+        if (overlayRef.current) overlayRef.current.dataset.phase = nextPhase;
       }
 
       ctx.clearRect(0, 0, fullW, fullH);
 
-      // Sweeping burn front across the letter card:
-      // Starts at left edges and sweeps all the way across to the right
+      // Sweeping burn front across the letter card
       const sweepX = progress * (cardW + 60) - 15;
 
-      // Spawn ash, embers, dust, and smoke along the sweeping burn front across the entire duration
+      // Spawn ash, embers, dust, and smoke along the active burn front
       if (progress >= 0.06 && progress < 0.82) {
-        spawnAshParticles(sweepX, progress);
+        spawnAshParticles(sweepX, progress, dt);
       }
 
-      // Draw the glowing incandescent fire edge along the burn seam (#FC2904, #FF704F, white-hot center)
+      // Draw glowing incandescent fire edge along the burn seam (#FC2904, #FF704F, white-hot center)
       if (progress >= 0.08 && progress < 0.85) {
         const seamDrawX = padX + sweepX;
         const seamWidth = isMobile ? 44 : 54;
@@ -250,11 +250,10 @@ export default function ThanosAshBurn({
         const sparkCount = isMobile ? Math.floor(Math.random() * 2) + 1 : Math.floor(Math.random() * 3) + 2;
         for (let s = 0; s < sparkCount; s++) {
           const sparkY = padTop + Math.random() * cardH;
+          const sparkX = seamDrawX + (Math.random() - 0.5) * 10;
           ctx.beginPath();
-          ctx.arc(seamDrawX + (Math.random() - 0.5) * 10, sparkY, Math.random() * 1.8 + 0.8, 0, Math.PI * 2);
+          ctx.arc(sparkX, sparkY, Math.random() * 1.8 + 0.8, 0, Math.PI * 2);
           ctx.fillStyle = '#ffffff';
-          ctx.shadowColor = '#FF704F';
-          ctx.shadowBlur = 10;
           ctx.fill();
         }
         ctx.restore();
@@ -268,7 +267,6 @@ export default function ThanosAshBurn({
         const p = particles[i];
         p.life += dt;
 
-        // Aerodynamic aerodynamic flutter & thermal updraft
         p.wobbleOffset += p.wobbleSpeed * dt;
         p.x += (p.vx + Math.sin(p.wobbleOffset) * 1.0) * dt;
         p.y += p.vy * dt;
@@ -277,7 +275,6 @@ export default function ThanosAshBurn({
         p.angle += p.angularSpeed * dt;
         p.alpha -= p.decay * dt * decayBoost;
 
-        // Expand smoke puffs as they dissipate
         if (p.type === 'smoke') {
           p.size = p.baseSize + p.life * 0.16;
         }
@@ -294,17 +291,21 @@ export default function ThanosAshBurn({
         ctx.rotate(p.angle);
 
         if (p.isEmber) {
-          // 1. Glowing Hot Ember (#FC2904 / #FF704F / gold / white)
-          ctx.shadowColor = p.color;
-          ctx.shadowBlur = 10;
+          // High-speed dual-circle halo glow (100% hardware accelerated on Mali-G68 GPU)
+          if (p.haloColor) {
+            ctx.fillStyle = p.haloColor;
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
           ctx.fillStyle = p.color;
           ctx.beginPath();
           ctx.arc(0, 0, p.size, 0, Math.PI * 2);
           ctx.fill();
         } else if (p.type === 'flake') {
-          // 2. Irregular Jagged Charcoal Ash Flake (tumbling in 3D air)
+          // Irregular Jagged Charcoal Ash Flake (tumbling in 3D air)
           ctx.fillStyle = p.color;
-          const flipScale = 0.5 + Math.sin(p.wobbleOffset) * 0.5; // Simulates 3D rotation aspect
+          const flipScale = 0.5 + Math.sin(p.wobbleOffset) * 0.5;
           ctx.scale(1, flipScale);
 
           if (p.vertices && p.vertices.length > 2) {
@@ -319,13 +320,13 @@ export default function ThanosAshBurn({
             ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * p.aspect);
           }
         } else if (p.type === 'smoke') {
-          // 3. Subtle Smoke Wisp
+          // Subtle Smoke Wisp
           ctx.fillStyle = `${p.color}${Math.max(0, p.alpha)})`;
           ctx.beginPath();
           ctx.arc(0, 0, p.size, 0, Math.PI * 2);
           ctx.fill();
         } else {
-          // 4. Fine Ash Dust Speck
+          // Fine Ash Dust Speck
           ctx.fillStyle = p.color;
           ctx.beginPath();
           ctx.arc(0, 0, p.size, 0, Math.PI * 2);
@@ -342,8 +343,8 @@ export default function ThanosAshBurn({
         ctx.clearRect(0, 0, fullW, fullH);
         if (!animationCompleteCalled) {
           animationCompleteCalled = true;
-          if (typeof onComplete === 'function') {
-            onComplete();
+          if (typeof onCompleteRef.current === 'function') {
+            onCompleteRef.current();
           }
         }
       }
@@ -356,13 +357,15 @@ export default function ThanosAshBurn({
         cancelAnimationFrame(animFrameId.current);
       }
     };
-  }, [isBurning, duration, isFullCard, onComplete]);
+  }, [isBurning, duration, isFullCard]);
 
   if (!isBurning) return null;
 
   return (
     <div 
-      className={`thanos-card-ash-overlay thanos-phase-${phase}`} 
+      ref={overlayRef}
+      className="thanos-card-ash-overlay" 
+      data-phase="idle"
       aria-hidden="true"
     >
       {/* SVG Definitions for organic turbulent burn distortion and charring */}

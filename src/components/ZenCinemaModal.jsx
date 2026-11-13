@@ -122,13 +122,18 @@ export default function ZenCinemaModal({ isOpen, echoes, onClose, onToast }) {
       });
     }
 
-    const renderRain = () => {
+    let lastRainTime = performance.now();
+
+    const renderRain = (now) => {
       try {
         if (!ctx) return;
+        const dt = Math.min(50, now - lastRainTime) / 16.67;
+        lastRainTime = now;
+
         ctx.clearRect(0, 0, width, height);
 
         drops.forEach((d) => {
-          d.y += d.speed;
+          d.y += d.speed * dt;
           if (d.y > height) {
             d.y = -20;
             d.x = Math.random() * width;
@@ -149,7 +154,7 @@ export default function ZenCinemaModal({ isOpen, echoes, onClose, onToast }) {
       }
     };
 
-    renderRain();
+    animId = requestAnimationFrame(renderRain);
 
     return () => {
       window.removeEventListener('resize', handleResize);

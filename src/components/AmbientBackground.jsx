@@ -36,13 +36,18 @@ function AmbientBackground() {
       });
     }
 
-    const render = () => {
+    let lastTime = performance.now();
+
+    const render = (now) => {
+      const dt = Math.min(50, now - lastTime) / 16.67; // Normalized frame delta (~1.0 at 60fps, ~0.67 at 90fps)
+      lastTime = now;
+
       ctx.clearRect(0, 0, width, height);
 
       particles.forEach((p) => {
-        p.y += p.speedY;
-        p.x += p.speedX;
-        p.alpha += Math.sin(Date.now() * p.pulseSpeed) * 0.005;
+        p.y += p.speedY * dt;
+        p.x += p.speedX * dt;
+        p.alpha += Math.sin(now * p.pulseSpeed) * 0.005 * dt;
 
         // Wrap around
         if (p.y < -10) {
@@ -55,12 +60,19 @@ function AmbientBackground() {
         const currentAlpha = Math.max(0.1, Math.min(0.8, p.alpha));
 
         ctx.save();
+        ctx.globalAlpha = currentAlpha;
+        // Soft ambient glow halo (hardware accelerated on Mali-G68 GPU without expensive shadowBlur)
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius * 2.2, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = currentAlpha * 0.35;
+        ctx.fill();
+
+        // Core bright ember
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.globalAlpha = currentAlpha;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = p.color;
         ctx.fill();
         ctx.restore();
       });
@@ -68,7 +80,7 @@ function AmbientBackground() {
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    animationFrameId = requestAnimationFrame(render);
 
     return () => {
       window.removeEventListener('resize', handleResize);

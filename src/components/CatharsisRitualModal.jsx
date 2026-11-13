@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { X, Flame, Sparkles, RefreshCw, Feather } from 'lucide-react';
 import ThanosAshBurn from './ThanosAshBurn';
 
@@ -6,6 +6,15 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
   const [secretText, setSecretText] = useState('');
   const [isBurning, setIsBurning] = useState(false);
   const [hasBurned, setHasBurned] = useState(false);
+
+  const handleAshComplete = useCallback(() => {
+    setIsBurning(false);
+    setHasBurned(true);
+    setSecretText('');
+    if (typeof onToast === 'function') {
+      onToast('Your burden was consumed by fire and dissolved into stardust.');
+    }
+  }, [onToast]);
 
   if (!isOpen) return null;
 
@@ -20,14 +29,6 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
     setIsBurning(true);
   };
 
-  const handleAshComplete = () => {
-    setIsBurning(false);
-    setHasBurned(true);
-    setSecretText('');
-    if (typeof onToast === 'function') {
-      onToast('Your burden was consumed by fire and dissolved into stardust.');
-    }
-  };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

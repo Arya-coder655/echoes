@@ -13,6 +13,7 @@ export default function PullToRefresh({ onRefresh, children }) {
   const startY = useRef(0);
   const currentY = useRef(0);
   const isDragging = useRef(false);
+  const rafId = useRef(null);
   const THRESHOLD = 72; // pixels needed to trigger refresh
   const MAX_PULL = 110;
 
@@ -28,15 +29,23 @@ export default function PullToRefresh({ onRefresh, children }) {
     currentY.current = e.touches[0].clientY;
     const diff = currentY.current - startY.current;
 
-    if (diff > 0 && window.scrollY === 0) {
-      // Apply rubber-band damping resistance
-      const damped = Math.min(MAX_PULL, Math.pow(diff, 0.85) * 1.8);
-      setPullDistance(damped);
-      if (e.cancelable && diff > 10) {
+    if (diff > 0 && window.scrollY <= 0) {
+      if (e.cancelable && diff > 8) {
         e.preventDefault();
       }
+      // Throttle state updates to display refresh rate (e.g. 90Hz on Samsung A33)
+      if (!rafId.current) {
+        rafId.current = requestAnimationFrame(() => {
+          const currentDiff = currentY.current - startY.current;
+          if (currentDiff > 0) {
+            const damped = Math.min(MAX_PULL, Math.pow(currentDiff, 0.85) * 1.8);
+            setPullDistance(damped);
+          }
+          rafId.current = null;
+        });
+      }
     } else {
-      setPullDistance(0);
+      if (pullDistance !== 0) setPullDistance(0);
       isDragging.current = false;
     }
   };
@@ -62,6 +71,10 @@ export default function PullToRefresh({ onRefresh, children }) {
   }, [onRefresh, THRESHOLD]);
 
   const handleTouchEnd = () => {
+    if (rafId.current) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
     if (!isDragging.current || isRefreshing) return;
     isDragging.current = false;
 
@@ -84,12 +97,14 @@ export default function PullToRefresh({ onRefresh, children }) {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       {/* Floating Pure Black Pull Indicator Pill */}
       <div 
         className={`pull-indicator-pill ${pullDistance > 0 || isRefreshing ? 'is-visible' : ''} ${isRefreshing ? 'is-refreshing' : ''}`}
         style={{
-          transform: `translate(-50%, ${Math.min(pullDistance, MAX_PULL)}px)`,
+          transform: `translate3d(-50%, ${Math.min(pullDistance, MAX_PULL)}px, 0)`,
+          WebkitTransform: `translate3d(-50%, ${Math.min(pullDistance, MAX_PULL)}px, 0)`,
           opacity: pullDistance > 10 || isRefreshing ? 1 : 0
         }}
         aria-hidden={pullDistance === 0 && !isRefreshing}
@@ -108,7 +123,7 @@ export default function PullToRefresh({ onRefresh, children }) {
                 className={`pull-circle-bar ${isRefreshing ? 'is-spinning' : ''}`}
                 cx="22" 
                 cy="22" 
-                r={circleRadius}
+                r={circleRadius} 
                 strokeDasharray={circumference}
                 strokeDashoffset={isRefreshing ? circumference * 0.25 : strokeDashoffset}
               />
@@ -119,7 +134,8 @@ export default function PullToRefresh({ onRefresh, children }) {
               alt="Echoes" 
               className={`pull-app-logo ${isRefreshing ? 'is-pulse-spin' : ''}`}
               style={{
-                transform: isRefreshing ? undefined : `rotate(${progressRatio * 360}deg)`
+                transform: isRefreshing ? undefined : `rotate(${progressRatio * 360}deg)`,
+                WebkitTransform: isRefreshing ? undefined : `rotate(${progressRatio * 360}deg)`
               }}
               onError={(e) => {
                 e.target.onerror = null;
@@ -147,7 +163,8 @@ export default function PullToRefresh({ onRefresh, children }) {
       <div 
         className="pull-children-wrapper"
         style={{
-          transform: pullDistance > 0 ? `translateY(${pullDistance * 0.45}px)` : undefined,
+          transform: pullDistance > 0 ? `translate3d(0, ${pullDistance * 0.45}px, 0)` : undefined,
+          WebkitTransform: pullDistance > 0 ? `translate3d(0, ${pullDistance * 0.45}px, 0)` : undefined,
           transition: isDragging.current ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1)'
         }}
       >
