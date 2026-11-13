@@ -716,10 +716,6 @@ export default function App() {
               <p className="footer-quote">
                 “Every unspoken word carries a story waiting to be heard. Turn your quietest ache into a bridge of connection.”
               </p>
-              <div className="footer-souls-badge" title="Kindred souls currently sharing the sanctuary">
-                <span className="candle-flicker">🕯️</span>
-                <span><b>{activeSouls} Active Souls</b> present in sanctuary</span>
-              </div>
             </div>
 
             {/* Sanctuary Experiences Accordion */}
@@ -803,7 +799,7 @@ export default function App() {
 
           <div className="footer-bottom-row">
             <p className="footer-copy">
-              &copy; {new Date().getFullYear()} Echoes • Resting in the rain for {sessionDuration} • 🕯️ {activeSouls} Souls Online
+              &copy; {new Date().getFullYear()} Echoes • Resting in the rain for {sessionDuration}
             </p>
             <div className="footer-bottom-actions">
               <button 
