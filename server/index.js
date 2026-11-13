@@ -22,7 +22,8 @@ import {
   deleteEchoPermanently,
   deleteCommentPermanently,
   updateSoulHeartbeat,
-  getActiveSoulsCount
+  getActiveSoulsCount,
+  logAdminAction
 } from './db.js';
 import {
   whisperRateLimiter,
@@ -161,10 +162,18 @@ app.get('/api/support/tiers', (req, res) => {
   res.json(BEER_DONATION_CONFIG);
 });
 
-app.post('/api/beer/intent', (req, res) => {
+app.post('/api/beer/intent', async (req, res) => {
   const { amount = 150 } = req.body || {};
   const validAmounts = [90, 150, 250];
   const finalAmount = validAmounts.includes(Number(amount)) ? Number(amount) : 150;
+  
+  // Persist support intent activity into TiDB Cloud admin logs
+  try {
+    await logAdminAction('BEER_SUPPORT_INTENT', String(finalAmount), `Support intent selected: ₹${finalAmount}`);
+  } catch (err) {
+    console.warn('Could not record support intent to TiDB:', err.message);
+  }
+
   res.json({
     success: true,
     amount: finalAmount,
