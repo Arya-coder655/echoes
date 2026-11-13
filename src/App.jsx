@@ -318,28 +318,29 @@ export default function App() {
   }, []);
 
   const handleLike = useCallback(async (id) => {
-    const target = echoes.find((e) => e.id === id);
-    const currentlyLiked = target ? target.liked : false;
+    let wasLiked = false;
 
-    setEchoes((prev) =>
-      prev.map((echo) => {
+    setEchoes((prev) => {
+      const target = prev.find((e) => e.id === id);
+      wasLiked = target ? target.liked : false;
+      return prev.map((echo) => {
         if (echo.id === id) {
           const liked = !echo.liked;
           const likes = liked ? (echo.likes || 0) + 1 : Math.max(0, (echo.likes || 0) - 1);
           return { ...echo, liked, likes };
         }
         return echo;
-      })
-    );
+      });
+    });
 
-    // Sync to persistent SQLite database
-    const res = await toggleLikeInDb(id, currentlyLiked);
+    // Sync to persistent database
+    const res = await toggleLikeInDb(id, wasLiked);
     if (res && typeof res.likes === 'number') {
       setEchoes((prev) =>
         prev.map((e) => (e.id === id ? { ...e, likes: res.likes } : e))
       );
     }
-  }, [echoes]);
+  }, []);
 
   const handleShareSuccess = useCallback(async (id) => {
     setEchoes((prev) =>

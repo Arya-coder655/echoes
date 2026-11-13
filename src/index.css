@@ -168,6 +168,8 @@ button {
   justify-content: space-between;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.15);
   transition: all 0.3s ease;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .minimal-brand {
@@ -441,7 +443,8 @@ button {
   position: absolute;
   top: 10%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate3d(-50%, 0, 0);
+  -webkit-transform: translate3d(-50%, 0, 0);
   width: 450px;
   height: 250px;
   background: radial-gradient(circle, rgba(252, 41, 4, 0.18), transparent 70%);
@@ -848,13 +851,15 @@ button {
   border: 1px solid var(--theme-border, var(--border-subtle));
   border-radius: var(--radius-lg);
   padding: 24px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease, border-color 0.28s ease;
   overflow: hidden;
   box-sizing: border-box;
-  will-change: transform;
+  /* Hardware-optimized scrolling: skip layout & GPU raster for off-screen cards */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 280px;
 }
 
 .echo-card:hover {
@@ -862,6 +867,7 @@ button {
   border-color: var(--theme-color, rgba(252, 41, 4, 0.6));
   box-shadow: 0 16px 36px var(--theme-glow, rgba(252, 41, 4, 0.25));
   z-index: 2;
+  will-change: transform;
 }
 
 /* Modern CSS Grid Masonry when natively supported */
@@ -3094,6 +3100,10 @@ button {
     margin-bottom: 18px;
     padding: 18px 16px;
     border-radius: 18px;
+    /* Eliminates heavy GPU multi-pass Gaussian blur on mobile GPUs during scroll */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(18, 16, 26, 0.94);
   }
   @supports (grid-template-rows: masonry) {
     .echoes-grid {

@@ -19,17 +19,19 @@ function AmbientBackground() {
 
     window.addEventListener('resize', handleResize);
 
-    // Create particles
-    const particleCount = Math.min(Math.floor((width * height) / 18000), 75);
+    // Responsive particle count: lighter on mobile GPUs (Mali-G68) to preserve 90fps scrolling
+    const isMobile = width < 768;
+    const maxParticles = isMobile ? 28 : 65;
+    const particleCount = Math.min(Math.floor((width * height) / 22000), maxParticles);
     const particles = [];
 
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        radius: Math.random() * 1.8 + 0.5,
-        speedX: (Math.random() - 0.5) * 0.25,
-        speedY: -Math.random() * 0.35 - 0.1, // gently drifting upwards like embers
+        radius: Math.random() * 1.6 + 0.5,
+        speedX: (Math.random() - 0.5) * 0.22,
+        speedY: -Math.random() * 0.32 - 0.08, // gently drifting upwards like embers
         alpha: Math.random() * 0.6 + 0.2,
         pulseSpeed: Math.random() * 0.02 + 0.005,
         color: Math.random() > 0.6 ? '#fc2904' : Math.random() > 0.3 ? '#818cf8' : '#fbbf24'
@@ -37,8 +39,31 @@ function AmbientBackground() {
     }
 
     let lastTime = performance.now();
+    let isScrolling = false;
+    let scrollTimeout = null;
+
+    const handleScroll = () => {
+      isScrolling = true;
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        isScrolling = false;
+      }, 120);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    let frameSkip = false;
 
     const render = (now) => {
+      // During high-velocity mobile scrolling, yield alternate frames to give the compositor 100% bandwidth
+      if (isScrolling) {
+        frameSkip = !frameSkip;
+        if (frameSkip) {
+          animationFrameId = requestAnimationFrame(render);
+          return;
+        }
+      }
+
       const dt = Math.min(50, now - lastTime) / 16.67; // Normalized frame delta (~1.0 at 60fps, ~0.67 at 90fps)
       lastTime = now;
 
@@ -59,13 +84,11 @@ function AmbientBackground() {
 
         const currentAlpha = Math.max(0.1, Math.min(0.8, p.alpha));
 
-        ctx.save();
-        ctx.globalAlpha = currentAlpha;
-        // Soft ambient glow halo (hardware accelerated on Mali-G68 GPU without expensive shadowBlur)
+        // Soft ambient glow halo (hardware accelerated without state-machine save/restore overhead)
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius * 2.2, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, p.radius * 2.0, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
-        ctx.globalAlpha = currentAlpha * 0.35;
+        ctx.globalAlpha = currentAlpha * 0.3;
         ctx.fill();
 
         // Core bright ember
@@ -74,7 +97,6 @@ function AmbientBackground() {
         ctx.fillStyle = p.color;
         ctx.globalAlpha = currentAlpha;
         ctx.fill();
-        ctx.restore();
       });
 
       animationFrameId = requestAnimationFrame(render);
@@ -84,6 +106,8 @@ function AmbientBackground() {
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);

@@ -10,45 +10,13 @@ export default function PullToRefresh({ onRefresh, children }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  const containerRef = useRef(null);
   const startY = useRef(0);
   const currentY = useRef(0);
   const isDragging = useRef(false);
   const rafId = useRef(null);
   const THRESHOLD = 72; // pixels needed to trigger refresh
   const MAX_PULL = 110;
-
-  const handleTouchStart = (e) => {
-    if (window.scrollY === 0 && !isRefreshing) {
-      startY.current = e.touches[0].clientY;
-      isDragging.current = true;
-    }
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isDragging.current || isRefreshing) return;
-    currentY.current = e.touches[0].clientY;
-    const diff = currentY.current - startY.current;
-
-    if (diff > 0 && window.scrollY <= 0) {
-      if (e.cancelable && diff > 8) {
-        e.preventDefault();
-      }
-      // Throttle state updates to display refresh rate (e.g. 90Hz on Samsung A33)
-      if (!rafId.current) {
-        rafId.current = requestAnimationFrame(() => {
-          const currentDiff = currentY.current - startY.current;
-          if (currentDiff > 0) {
-            const damped = Math.min(MAX_PULL, Math.pow(currentDiff, 0.85) * 1.8);
-            setPullDistance(damped);
-          }
-          rafId.current = null;
-        });
-      }
-    } else {
-      if (pullDistance !== 0) setPullDistance(0);
-      isDragging.current = false;
-    }
-  };
 
   const triggerRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -70,20 +38,82 @@ export default function PullToRefresh({ onRefresh, children }) {
     }
   }, [onRefresh, THRESHOLD]);
 
-  const handleTouchEnd = () => {
-    if (rafId.current) {
-      cancelAnimationFrame(rafId.current);
-      rafId.current = null;
-    }
-    if (!isDragging.current || isRefreshing) return;
-    isDragging.current = false;
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-    if (pullDistance >= THRESHOLD) {
-      triggerRefresh();
-    } else {
-      setPullDistance(0);
-    }
-  };
+    const onTouchMove = (e) => {
+      if (!isDragging.current || isRefreshing) return;
+      currentY.current = e.touches[0].clientY;
+      const diff = currentY.current - startY.current;
+
+      if (diff > 0 && window.scrollY <= 0) {
+        if (e.cancelable && diff > 8) {
+          e.preventDefault();
+        }
+        if (!rafId.current) {
+          rafId.current = requestAnimationFrame(() => {
+            const currentDiff = currentY.current - startY.current;
+            if (currentDiff > 0) {
+              const damped = Math.min(MAX_PULL, Math.pow(currentDiff, 0.85) * 1.8);
+              setPullDistance(damped);
+            }
+            rafId.current = null;
+          });
+        }
+      } else if (diff < 0) {
+        // User is scrolling downward into content, not pulling to refresh!
+        // Immediately disengage so native compositor scrolling takes over 100%
+        isDragging.current = false;
+        if (pullDistance !== 0) setPullDistance(0);
+        window.removeEventListener('touchmove', onTouchMove);
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+
+      if (!isDragging.current || isRefreshing) return;
+      isDragging.current = false;
+
+      setPullDistance((prev) => {
+        if (prev >= THRESHOLD) {
+          triggerRefresh();
+          return THRESHOLD;
+        }
+        return 0;
+      });
+    };
+
+    const onTouchStart = (e) => {
+      // Only engage if at the absolute top of the page with single finger
+      if (window.scrollY <= 0 && !isRefreshing && e.touches.length === 1) {
+        startY.current = e.touches[0].clientY;
+        isDragging.current = true;
+        // Dynamically bind move and end only during active top gesture
+        window.addEventListener('touchmove', onTouchMove, { passive: false });
+        window.addEventListener('touchend', onTouchEnd, { passive: true });
+        window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+      }
+    };
+
+    // Passive touch start ensures zero delay on initiating scroll gestures
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+    };
+  }, [isRefreshing, pullDistance, triggerRefresh]);
 
   // SVG circular progress calculation
   const progressRatio = Math.min(1, pullDistance / THRESHOLD);
@@ -93,11 +123,8 @@ export default function PullToRefresh({ onRefresh, children }) {
 
   return (
     <div 
+      ref={containerRef}
       className="echoes-pull-to-refresh-container"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
     >
       {/* Floating Pure Black Pull Indicator Pill */}
       <div 
