@@ -6,7 +6,7 @@ const UPI_ID = '9322794668-3@ybl';
 const PAYEE_NAME = 'Arya More';
 
 export default function BeerEasterEggModal({ isOpen, onClose }) {
-  const [selectedAmount, setSelectedAmount] = useState(100);
+  const [selectedAmount, setSelectedAmount] = useState(150);
   const [hasPaid, setHasPaid] = useState(false);
   const [isSadDismissing, setIsSadDismissing] = useState(false);
 
@@ -97,17 +97,17 @@ export default function BeerEasterEggModal({ isOpen, onClose }) {
           <div className="beer-amount-selector">
             <button
               type="button"
-              onClick={() => setSelectedAmount(50)}
-              className={`beer-amount-pill ${selectedAmount === 50 ? 'active' : ''}`}
+              onClick={() => setSelectedAmount(90)}
+              className={`beer-amount-pill ${selectedAmount === 90 ? 'active' : ''}`}
             >
-              🍺 ₹50
+              🍺 ₹90
             </button>
             <button
               type="button"
-              onClick={() => setSelectedAmount(100)}
-              className={`beer-amount-pill ${selectedAmount === 100 ? 'active' : ''}`}
+              onClick={() => setSelectedAmount(150)}
+              className={`beer-amount-pill ${selectedAmount === 150 ? 'active' : ''}`}
             >
-              🍻 ₹100
+              🍻 ₹150
             </button>
             <button
               type="button"

@@ -472,7 +472,10 @@ export default function App() {
   const handleOpenZenCinema = useCallback(() => setZenCinemaOpen(true), []);
   const handleOpenRitual = useCallback(() => setRitualOpen(true), []);
   const handleOpenAbout = useCallback(() => setAboutOpen(true), []);
-  const handleOpenBeer = useCallback(() => setBeerModalOpen(true), []);
+  const handleOpenBeer = useCallback(() => {
+    setBeerSadToast(false);
+    setBeerModalOpen(true);
+  }, []);
   const handleCloseAdmin = useCallback(() => {
     setAdminOpen(false);
     if (window.location.hash === '#admin' || window.location.hash === '#guardian') {
@@ -564,6 +567,7 @@ export default function App() {
         onOpenComposer={handleOpenComposer}
         onOpenAbout={handleOpenAbout}
         onOpenBeer={handleOpenBeer}
+        beerSadState={beerSadState}
         onOpenMixer={handleOpenMixer}
         onOpenZenCinema={handleOpenZenCinema}
         onOpenRitual={handleOpenRitual}

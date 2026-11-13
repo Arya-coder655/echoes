@@ -138,6 +138,41 @@ app.post('/api/presence/heartbeat', async (req, res) => {
   }
 });
 
+// -------------------------------------------------------------
+// Developer Support / Beer Donation API (90rs, 150rs, 250rs)
+// -------------------------------------------------------------
+const BEER_DONATION_CONFIG = {
+  payeeName: 'Arya More',
+  upiId: '9322794668-3@ybl',
+  currency: 'INR',
+  tiers: [
+    { amount: 90, label: '🍺 ₹90', emoji: '🍺', description: 'Buy a beer' },
+    { amount: 150, label: '🍻 ₹150', emoji: '🍻', description: 'Buy a round of beers', default: true },
+    { amount: 250, label: '🌟 ₹250', emoji: '🌟', description: 'Super supporter' }
+  ],
+  validAmounts: [90, 150, 250]
+};
+
+app.get('/api/beer/config', (req, res) => {
+  res.json(BEER_DONATION_CONFIG);
+});
+
+app.get('/api/support/tiers', (req, res) => {
+  res.json(BEER_DONATION_CONFIG);
+});
+
+app.post('/api/beer/intent', (req, res) => {
+  const { amount = 150 } = req.body || {};
+  const validAmounts = [90, 150, 250];
+  const finalAmount = validAmounts.includes(Number(amount)) ? Number(amount) : 150;
+  res.json({
+    success: true,
+    amount: finalAmount,
+    upiLink: `upi://pay?pa=9322794668-3@ybl&pn=Arya%20More&cu=INR&am=${finalAmount}&tn=Buy%20a%20beer%20for%20Arya%20More`,
+    message: `Thank you for supporting Arya More with ₹${finalAmount}!`
+  });
+});
+
 /**
  * Get current active souls count
  */

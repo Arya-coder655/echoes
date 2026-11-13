@@ -14,6 +14,7 @@ function Navbar({
   onOpenComposer,
   onOpenAbout,
   onOpenBeer,
+  beerSadState = false,
   onOpenMixer,
   onOpenZenCinema,
   onOpenRitual,
@@ -32,89 +33,104 @@ function Navbar({
 
   return (
     <header className="minimal-navbar-wrapper">
-      <div className="minimal-navbar">
-        {/* Brand: "Echoes" */}
-        <button 
-          type="button"
-          className="minimal-brand" 
-          onClick={handleBrandClick}
-          title="Echoes Sanctuary — Return to Top"
-          aria-label="Echoes Home"
-        >
-          <span className="brand-dot-pulse" />
-          <span className="brand-text-single">Echoes</span>
-        </button>
-
-        {/* Right: Sanctuary Actions & Interactive Portals */}
-        <div className="minimal-actions">
-          {/* Zen Cinema Mode */}
-          <button
+      <div className="minimal-navbar-row">
+        <div className="minimal-navbar">
+          {/* Brand: "Echoes" */}
+          <button 
             type="button"
-            onClick={onOpenZenCinema}
-            className="minimal-icon-btn cinema-hover nav-desktop-only"
-            title="Enter Zen Cinema (Auto-Stream whispers)"
-            aria-label="Zen Cinema"
+            className="minimal-brand" 
+            onClick={handleBrandClick}
+            title="Echoes Sanctuary — Return to Top"
+            aria-label="Echoes Home"
           >
-            <Tv size={17} />
+            <span className="brand-dot-pulse" />
+            <span className="brand-text-single">Echoes</span>
           </button>
 
-          {/* Sacred Hearth (Burn a Regret) */}
-          <button
-            type="button"
-            onClick={onOpenRitual}
-            className="minimal-icon-btn flame-hover nav-desktop-only"
-            title="The Sacred Hearth (Burn a secret to ashes)"
-            aria-label="Burn a Regret"
-          >
-            <Flame size={17} className="text-amber-400" />
-          </button>
-
-          {/* Real Rain Soundscape Lounge */}
-          <button
-            type="button"
-            onClick={onOpenMixer}
-            className={`minimal-icon-btn audio-hover ${isAudioPlaying ? 'active-audio' : ''}`}
-            title={isAudioPlaying ? `Rain Active (${sessionDuration}) — Click to customize soundscape` : "Open Rain & Ambience Sanctuary"}
-            aria-label="Soundscape Lounge"
-          >
-            <CloudRain size={17} className={isAudioPlaying ? "active-audio-icon text-sky-400" : ""} />
-            {isAudioPlaying && <span className="audio-live-dot" />}
-          </button>
-
-          {/* Install PWA App (Auto-hidden when in standalone) */}
-          {isInstallable && (
+          {/* Right: Sanctuary Actions & Interactive Portals */}
+          <div className="minimal-actions">
+            {/* Zen Cinema Mode */}
             <button
               type="button"
-              onClick={onOpenInstall}
-              className="minimal-icon-btn install-hover nav-desktop-only"
-              title="Install Echoes Sanctuary App"
-              aria-label="Install App"
+              onClick={onOpenZenCinema}
+              className="minimal-icon-btn cinema-hover nav-desktop-only"
+              title="Enter Zen Cinema (Auto-Stream whispers)"
+              aria-label="Zen Cinema"
             >
-              <Smartphone size={17} className="text-amber-400" />
+              <Tv size={17} />
             </button>
-          )}
 
-          {/* New Echo Minimal CTA */}
+            {/* Sacred Hearth (Burn a Regret) */}
+            <button
+              type="button"
+              onClick={onOpenRitual}
+              className="minimal-icon-btn flame-hover nav-desktop-only"
+              title="The Sacred Hearth (Burn a secret to ashes)"
+              aria-label="Burn a Regret"
+            >
+              <Flame size={17} className="text-amber-400" />
+            </button>
+
+            {/* Real Rain Soundscape Lounge */}
+            <button
+              type="button"
+              onClick={onOpenMixer}
+              className={`minimal-icon-btn audio-hover ${isAudioPlaying ? 'active-audio' : ''}`}
+              title={isAudioPlaying ? `Rain Active (${sessionDuration}) — Click to customize soundscape` : "Open Rain & Ambience Sanctuary"}
+              aria-label="Soundscape Lounge"
+            >
+              <CloudRain size={17} className={isAudioPlaying ? "active-audio-icon text-sky-400" : ""} />
+              {isAudioPlaying && <span className="audio-live-dot" />}
+            </button>
+
+            {/* Install PWA App (Auto-hidden when in standalone) */}
+            {isInstallable && (
+              <button
+                type="button"
+                onClick={onOpenInstall}
+                className="minimal-icon-btn install-hover nav-desktop-only"
+                title="Install Echoes Sanctuary App"
+                aria-label="Install App"
+              >
+                <Smartphone size={17} className="text-amber-400" />
+              </button>
+            )}
+
+            {/* New Echo Minimal CTA */}
+            <button
+              type="button"
+              onClick={onOpenComposer}
+              className="minimal-cta-btn"
+              title="Whisper an Unspoken Thought"
+              aria-label="Echo a thought"
+            >
+              <Plus size={16} />
+              <span>Echo</span>
+            </button>
+
+            {/* Mobile Hamburger Menu Toggle */}
+            <button
+              className="minimal-mobile-toggle"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle Menu"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Beer Emoji Duplicate in Header (Outside of Nav Bar) */}
+        {onOpenBeer && (
           <button
             type="button"
-            onClick={onOpenComposer}
-            className="minimal-cta-btn"
-            title="Whisper an Unspoken Thought"
-            aria-label="Echo a thought"
+            onClick={onOpenBeer}
+            className={`header-beer-btn ${beerSadState ? 'sad-wobble' : ''}`}
+            title={beerSadState ? "Arya will drink water today... 💧" : "Buy me a beer? 🍺 (A little something for the curious ones)"}
+            aria-label="Buy me a beer"
           >
-            <Plus size={16} />
-            <span>Echo</span>
+            <span className="beer-emoji-icon">{beerSadState ? '💧' : '🍺'}</span>
           </button>
-
-          {/* Mobile Hamburger Menu Toggle */}
-          <button
-            className="minimal-mobile-toggle"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle Menu"
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Mobile Drawer */}
