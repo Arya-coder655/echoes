@@ -5,11 +5,7 @@ import {
   Share2, 
   Sparkles, 
   MessageCircle, 
-  RefreshCw, 
-  Tv, 
-  Flame, 
-  Compass, 
-  CloudRain 
+  RefreshCw 
 } from 'lucide-react';
 
 const DAILY_QUOTES = [
@@ -68,44 +64,8 @@ function Hero({
         </h1>
 
         <p className="hero-description">
-          Share your deepest regrets, unposted love letters, and final farewells completely anonymously. 
-          Listen to real recorded rain, burn private secrets to ash, or drift in Zen Cinema.
+          Share your deepest regrets, unposted love letters, and final farewells completely anonymously.
         </p>
-
-        {/* Interactive Experience Pillars */}
-        <div className="hero-experiences-strip">
-          <button onClick={onOpenMixer} className="hero-exp-card">
-            <CloudRain size={18} className="text-sky-400" />
-            <div className="exp-card-text">
-              <span className="exp-card-title">Rain Sanctuary</span>
-              <span className="exp-card-sub">Real recorded rain mixer</span>
-            </div>
-          </button>
-
-          <button onClick={onOpenZenCinema} className="hero-exp-card">
-            <Tv size={18} className="text-indigo-400" />
-            <div className="exp-card-text">
-              <span className="exp-card-title">Zen Cinema</span>
-              <span className="exp-card-sub">Full-screen auto-drift</span>
-            </div>
-          </button>
-
-          <button onClick={onOpenRitual} className="hero-exp-card">
-            <Flame size={18} className="text-rose-400" />
-            <div className="exp-card-text">
-              <span className="exp-card-title">Burn a Regret</span>
-              <span className="exp-card-sub">Catharsis ritual to ash</span>
-            </div>
-          </button>
-
-          <button onClick={onOpenWell} className="hero-exp-card">
-            <Compass size={18} className="text-amber-400" />
-            <div className="exp-card-text">
-              <span className="exp-card-title">Whispering Well</span>
-              <span className="exp-card-sub">Draw a serendipitous echo</span>
-            </div>
-          </button>
-        </div>
 
         {/* Rotating Emotional Whisper Quote */}
         <div className="hero-quote-card">

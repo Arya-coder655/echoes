@@ -114,7 +114,7 @@ server.listen(PORT, async () => {
     const testCases = [
       {
         name: '1. About Modal',
-        openSelector: 'button[aria-label="About Echoes"]',
+        openSelector: '.footer-about-pill-btn',
         expectedSelector: '.about-modal-backdrop',
         closeSelector: '.about-close-btn'
       },
