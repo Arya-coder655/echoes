@@ -303,7 +303,7 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
                   <span className="char-count">{message.length}/600</span>
                 </div>
                 
-                <div className={`composer-textarea-container ${isBurningAsh ? 'thanos-disintegrating' : ''}`}>
+                <div className="composer-textarea-container">
                   <textarea
                     ref={textareaRef}
                     placeholder="What did you never get the courage to say? What do you carry in your chest?..."
@@ -313,11 +313,11 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
                       if (error) setError('');
                     }}
                     maxLength={600}
-                    className={`composer-textarea ${isBurningAsh ? 'thanos-text-dissolve' : ''}`}
+                    className="composer-textarea"
                     disabled={isSubmitting || isBurningAsh}
                   />
 
-                  {/* Thanos Snap Ash Burn Disintegration Overlay */}
+                  {/* Particle & Ash Physics Engine Overlay */}
                   <ThanosAshBurn 
                     isBurning={isBurningAsh} 
                     onComplete={handleAshBurnComplete} 

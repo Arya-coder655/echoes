@@ -7184,19 +7184,6 @@ button {
   display: block;
 }
 
-.thanos-disintegrating {
-  position: relative !important;
-  animation: whole-card-thanos-burn 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  box-shadow: 0 0 35px rgba(251, 101, 20, 0.6) !important;
-  border-color: #ff6b00 !important;
-}
-
-.thanos-text-dissolve {
-  letter-spacing: 2px !important;
-  transition: letter-spacing 1.2s ease, opacity 2s ease !important;
-  opacity: 0.1 !important;
-}
-
 /* Composer Textarea Container */
 .composer-textarea-container {
   position: relative;
