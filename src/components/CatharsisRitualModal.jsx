@@ -45,10 +45,10 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
   return (
     <div className="ritual-modal-backdrop" onClick={isBurning ? undefined : onClose}>
       <div 
-        className={`ritual-modal-panel ${isBurning ? 'whole-card-burning' : ''}`} 
+        className="ritual-modal-panel" 
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Full-Card Thanos Snap Ash Burn Disintegration Overlay */}
+        {/* Particle & Ash Physics Engine Overlay */}
         <ThanosAshBurn 
           isBurning={isBurning} 
           onComplete={handleAshComplete} 
@@ -57,7 +57,7 @@ export default function CatharsisRitualModal({ isOpen, onClose, onToast }) {
         />
 
         {!hasBurned ? (
-          <div className={`ritual-card-inner ${isBurning ? 'whole-card-disintegrating' : ''}`}>
+          <div className="ritual-card-inner">
             {/* Header */}
             <div className="ritual-header">
               <div className="ritual-title-wrap">
