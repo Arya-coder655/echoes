@@ -98,6 +98,7 @@ export async function initDatabase() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS active_sessions (
         session_id VARCHAR(64) PRIMARY KEY,
+        created_at BIGINT NOT NULL DEFAULT 0,
         last_seen BIGINT NOT NULL,
         INDEX idx_last_seen (last_seen)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -717,34 +718,77 @@ export async function deleteCommentPermanently(commentId) {
 
 /**
  * Record/refresh an active soul's heartbeat in TiDB/MySQL
+ * Upserts session_id with created_at and last_seen timestamps (UTC ms).
+ * Strictly anonymous: session_id is a client-generated ephemeral random UUID.
  */
 export async function updateSoulHeartbeat(sessionId) {
   const now = Date.now();
   try {
     await pool.query(
-      `INSERT INTO active_sessions (session_id, last_seen)
-       VALUES (?, ?)
+      `INSERT INTO active_sessions (session_id, created_at, last_seen)
+       VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE last_seen = VALUES(last_seen)`,
-      [sessionId, now]
+      [sessionId, now, now]
     );
+    return true;
   } catch (err) {
     console.warn('Could not record heartbeat in MySQL:', err.message);
+    throw err;
   }
 }
 
 /**
- * Prune stale sessions (>90 seconds old) and return active souls count
+ * Return genuinely accurate active souls count from TiDB/MySQL.
+ * Read-only, indexed O(log N) query on idx_last_seen.
+ * Returns only sessions that have sent a valid heartbeat within timeoutSeconds.
  */
-export async function getActiveSoulsCount() {
-  const cutoff = Date.now() - 90 * 1000;
+export async function getActiveSoulsCount(timeoutSeconds = 75) {
+  const cutoff = Date.now() - (timeoutSeconds * 1000);
   try {
-    await pool.query('DELETE FROM active_sessions WHERE last_seen < ?', [cutoff]);
-    const [rows] = await pool.query('SELECT COUNT(*) as count FROM active_sessions');
-    return rows[0]?.count || 0;
+    const [rows] = await pool.query(
+      'SELECT COUNT(*) as count FROM active_sessions WHERE last_seen >= ?',
+      [cutoff]
+    );
+    return Number(rows[0]?.count || 0);
   } catch (err) {
     console.warn('Could not get active souls count from MySQL:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Explicitly remove a soul session on graceful departure (beacon leave/pagehide)
+ */
+export async function removeSoulSession(sessionId) {
+  try {
+    const [result] = await pool.query(
+      'DELETE FROM active_sessions WHERE session_id = ?',
+      [sessionId]
+    );
+    return (result?.affectedRows || 0) > 0;
+  } catch (err) {
+    console.warn('Could not remove soul session from MySQL:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Periodically prune stale sessions older than retentionSeconds (default 5 minutes).
+ * Kept separate from count reads to keep presence queries blazing fast.
+ */
+export async function pruneExpiredSessions(retentionSeconds = 300) {
+  const cutoff = Date.now() - (retentionSeconds * 1000);
+  try {
+    const [result] = await pool.query(
+      'DELETE FROM active_sessions WHERE last_seen < ? LIMIT 1000',
+      [cutoff]
+    );
+    return result?.affectedRows || 0;
+  } catch (err) {
+    console.warn('Could not prune expired sessions from MySQL:', err.message);
     return 0;
   }
 }
+
 
 

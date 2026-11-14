@@ -23,6 +23,8 @@ import {
   deleteCommentPermanently,
   updateSoulHeartbeat,
   getActiveSoulsCount,
+  removeSoulSession,
+  pruneExpiredSessions,
   logAdminAction
 } from './db.js';
 import {
@@ -57,6 +59,7 @@ app.use((req, res, next) => {
 // Middleware configuration
 app.use(cors());
 app.use(express.json({ limit: '3mb' })); // Support image attachments up to 2MB
+app.use(express.text({ type: ['text/plain', 'text/*'] })); // Support beacon exit payloads
 
 // -------------------------------------------------------------
 // API Endpoints
@@ -85,34 +88,55 @@ app.get('/api/ping', (req, res) => {
 });
 
 // -------------------------------------------------------------
-// Real-Time Active Souls (Presence Tracking)
-// 100% Anonymous: Only ephemeral random session tokens used. Zero PII/IP stored.
+// Real-Time Active Souls (Accurate Presence Tracking)
+// 100% Anonymous: Ephemeral UUID session tokens only. Zero PII/IP stored.
+// Genuine counts backed by TiDB Cloud MySQL `active_sessions`.
 // -------------------------------------------------------------
-const inMemorySouls = new Map();
+const SESSION_TIMEOUT_SECONDS = 75; // Active heartbeat window
+const CACHE_TTL_MS = 2500; // 2.5s DB read cache to absorb concurrent traffic spikes
+let cachedSoulsCount = null;
+let lastCacheFetchTime = 0;
 
-// Periodic prune of in-memory active souls (every 30 seconds)
+// Throttler to prevent spamming DB writes for the same session (max once per 8 seconds)
+const sessionWriteThrottler = new Map();
+
+// Periodic cleanup of session write throttler (every 5 minutes)
 setInterval(() => {
-  const cutoff = Date.now() - 90 * 1000;
-  for (const [id, lastSeen] of inMemorySouls.entries()) {
-    if (lastSeen < cutoff) inMemorySouls.delete(id);
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  for (const [id, ts] of sessionWriteThrottler.entries()) {
+    if (ts < cutoff) sessionWriteThrottler.delete(id);
   }
-}, 30000);
+}, 5 * 60 * 1000);
 
-function getOrganicSanctuarySouls() {
-  const now = new Date();
-  const hour = now.getUTCHours();
-  const minute = now.getUTCMinutes();
-  // Diurnal cycle: peaks during quiet night hours (20-32), softer at dawn (14-22)
-  const cycle = Math.sin((hour * 60 + minute) / 120);
-  return Math.round(18 + cycle * 6);
+// Safe periodic background pruning of stale sessions older than 5 minutes from TiDB
+setInterval(async () => {
+  try {
+    await pruneExpiredSessions(300);
+  } catch (err) {
+    console.warn('[Presence Prune] Periodic cleanup notice:', err.message);
+  }
+}, 60 * 1000);
+
+const SESSION_ID_REGEX = /^[a-zA-Z0-9_-]{8,64}$/;
+
+function isValidSessionId(id) {
+  return typeof id === 'string' && SESSION_ID_REGEX.test(id);
 }
 
-async function calculateTotalActiveSouls() {
-  const dbCount = await getActiveSoulsCount();
-  const memoryCount = inMemorySouls.size;
-  const realCount = Math.max(dbCount, memoryCount);
-  const organicAmbient = getOrganicSanctuarySouls();
-  return realCount + organicAmbient;
+async function getAccurateActiveSouls() {
+  const now = Date.now();
+  if (cachedSoulsCount !== null && (now - lastCacheFetchTime) < CACHE_TTL_MS) {
+    return cachedSoulsCount;
+  }
+  const count = await getActiveSoulsCount(SESSION_TIMEOUT_SECONDS);
+  cachedSoulsCount = count;
+  lastCacheFetchTime = now;
+  return count;
+}
+
+function invalidatePresenceCache() {
+  cachedSoulsCount = null;
+  lastCacheFetchTime = 0;
 }
 
 /**
@@ -120,22 +144,46 @@ async function calculateTotalActiveSouls() {
  */
 app.post('/api/presence/heartbeat', async (req, res) => {
   try {
-    const { sessionId } = req.body || {};
-    if (sessionId && typeof sessionId === 'string' && sessionId.length <= 64) {
-      inMemorySouls.set(sessionId, Date.now());
-      // Fire-and-forget sync to TiDB MySQL
-      updateSoulHeartbeat(sessionId).catch(() => {});
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch {}
+    }
+    const { sessionId } = body || {};
+
+    if (!isValidSessionId(sessionId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid anonymous session identifier'
+      });
     }
 
-    const totalSouls = await calculateTotalActiveSouls();
-    res.json({
+    const now = Date.now();
+    const lastWrite = sessionWriteThrottler.get(sessionId) || 0;
+
+    // Throttle DB updates to once per 8 seconds per unique session
+    if (now - lastWrite >= 8000) {
+      sessionWriteThrottler.set(sessionId, now);
+      await updateSoulHeartbeat(sessionId);
+      invalidatePresenceCache();
+    }
+
+    const activeSouls = await getAccurateActiveSouls();
+
+    return res.json({
       success: true,
-      activeSouls: totalSouls,
-      timestamp: Date.now()
+      activeSouls,
+      updatedAt: new Date().toISOString(),
+      status: 'live'
     });
   } catch (err) {
-    console.error('Heartbeat error:', err);
-    res.json({ success: true, activeSouls: getOrganicSanctuarySouls(), timestamp: Date.now() });
+    console.error('Heartbeat error:', err.message);
+    return res.status(503).json({
+      success: false,
+      activeSouls: null,
+      updatedAt: new Date().toISOString(),
+      status: 'unavailable',
+      error: 'Presence tracking temporarily unavailable'
+    });
   }
 });
 
@@ -183,17 +231,50 @@ app.post('/api/beer/intent', async (req, res) => {
 });
 
 /**
- * Get current active souls count
+ * Get current genuine active souls count
  */
 app.get('/api/presence', async (req, res) => {
   try {
-    const totalSouls = await calculateTotalActiveSouls();
+    const activeSouls = await getAccurateActiveSouls();
     res.json({
-      activeSouls: totalSouls,
-      timestamp: Date.now()
+      success: true,
+      activeSouls,
+      updatedAt: new Date().toISOString(),
+      status: 'live'
     });
   } catch (err) {
-    res.json({ activeSouls: getOrganicSanctuarySouls(), timestamp: Date.now() });
+    console.error('Active Souls fetch error:', err.message);
+    res.status(503).json({
+      success: false,
+      activeSouls: null,
+      updatedAt: new Date().toISOString(),
+      status: 'unavailable',
+      error: 'Presence tracking temporarily unavailable'
+    });
+  }
+});
+
+/**
+ * Handle graceful departure (beacon leave on pagehide)
+ */
+app.post('/api/presence/leave', async (req, res) => {
+  try {
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch {}
+    }
+    const { sessionId } = body || {};
+
+    if (isValidSessionId(sessionId)) {
+      sessionWriteThrottler.delete(sessionId);
+      await removeSoulSession(sessionId);
+      invalidatePresenceCache();
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.warn('Presence leave notice:', err.message);
+    res.json({ success: false });
   }
 });
 

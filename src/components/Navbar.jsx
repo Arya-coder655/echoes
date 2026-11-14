@@ -20,7 +20,7 @@ function Navbar({
   onOpenRitual,
   isAudioPlaying,
   sessionDuration,
-  activeSouls = 24,
+  activeSouls = 0,
   isInstallable = true,
   onOpenInstall
 }) {

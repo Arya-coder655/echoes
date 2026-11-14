@@ -40,7 +40,7 @@ import { CATEGORIES } from '../data/initialEchoes';
 const SESSION_PIN_KEY = 'echoes_admin_pin';
 const LOCAL_ACTIVITY_LOGS_KEY = 'echoes_admin_activity_log_v1';
 
-export default function AdminDashboardModal({ isOpen, onClose, onToast, echoes = [], activeSouls = 20 }) {
+export default function AdminDashboardModal({ isOpen, onClose, onToast, echoes = [], activeSouls = 0 }) {
   const [pin, setPin] = useState(() => sessionStorage.getItem(SESSION_PIN_KEY) || '');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState('');

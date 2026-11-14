@@ -18,7 +18,9 @@ import {
   toggleLikeInDb,
   recordShareInDb,
   addCommentInDb,
-  sendSoulHeartbeat
+  sendSoulHeartbeat,
+  fetchActiveSouls,
+  sendSoulLeave
 } from './utils/api';
 import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown } from 'lucide-react';
 
@@ -111,10 +113,8 @@ export default function App() {
   const [reportEchoTarget, setReportEchoTarget] = useState(null);
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [activeSouls, setActiveSouls] = useState(() => {
-    const d = new Date();
-    return 19 + Math.round(Math.sin((d.getUTCHours() * 60 + d.getUTCMinutes()) / 120) * 5);
-  });
+  const [activeSouls, setActiveSouls] = useState(null);
+  const [presenceStatus, setPresenceStatus] = useState('loading'); // 'loading' | 'live' | 'offline'
   const [footerDropdowns, setFooterDropdowns] = useState({
     experiences: false,
     walls: false,
@@ -171,6 +171,9 @@ export default function App() {
       sendSoulHeartbeat().then((res) => {
         if (res && res.isOnline && typeof res.activeSouls === 'number') {
           setActiveSouls(res.activeSouls);
+          setPresenceStatus('live');
+        } else if (res && !res.isOnline) {
+          setPresenceStatus('offline');
         }
       })
     ]);
@@ -192,39 +195,88 @@ export default function App() {
     };
   }, [loadDatabaseEchoes]);
 
-  // Synchronize Active Souls presence heartbeat
+  // Synchronize Active Souls presence heartbeat & real-time counter
   useEffect(() => {
     let isMounted = true;
+    let heartbeatTimer = null;
+    let pollTimer = null;
 
-    async function syncHeartbeat() {
+    async function doHeartbeat() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       const res = await sendSoulHeartbeat();
       if (!isMounted) return;
       if (res && res.isOnline && typeof res.activeSouls === 'number') {
         setActiveSouls(res.activeSouls);
-      } else {
-        // Natural gentle sanctuary flutter if offline
-        setActiveSouls((prev) => {
-          const delta = (Math.random() > 0.5 ? 1 : -1) * (Math.random() > 0.65 ? 1 : 0);
-          return Math.max(14, Math.min(38, prev + delta));
-        });
+        setPresenceStatus('live');
+      } else if (res && !res.isOnline) {
+        setPresenceStatus('offline');
       }
     }
 
-    syncHeartbeat();
-    const interval = setInterval(syncHeartbeat, 25000);
+    async function doPoll() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      const res = await fetchActiveSouls();
+      if (!isMounted) return;
+      if (res && res.isOnline && typeof res.activeSouls === 'number') {
+        setActiveSouls(res.activeSouls);
+        setPresenceStatus('live');
+      } else if (res && !res.isOnline) {
+        setPresenceStatus('offline');
+      }
+    }
 
-    const handleFocus = () => syncHeartbeat();
-    window.addEventListener('focus', handleFocus);
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') syncHeartbeat();
+    // Initial heartbeat on mount
+    doHeartbeat();
+
+    function startTimers() {
+      stopTimers();
+      // Send heartbeat every 25 seconds while active
+      heartbeatTimer = setInterval(doHeartbeat, 25000);
+      // Read count every 10 seconds to reflect worldwide visitor changes smoothly
+      pollTimer = setInterval(doPoll, 10000);
+    }
+
+    function stopTimers() {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      if (pollTimer) clearInterval(pollTimer);
+      heartbeatTimer = null;
+      pollTimer = null;
+    }
+
+    startTimers();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        doHeartbeat();
+        startTimers();
+      } else {
+        stopTimers();
+      }
     };
-    document.addEventListener('visibilitychange', handleVisibility);
+
+    const handlePageShow = () => {
+      doHeartbeat();
+      startTimers();
+    };
+
+    const handlePageHide = () => {
+      stopTimers();
+      sendSoulLeave();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('focus', doHeartbeat);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibility);
+      stopTimers();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('focus', doHeartbeat);
+      sendSoulLeave();
     };
   }, []);
 
@@ -589,6 +641,7 @@ export default function App() {
           onOpenZenCinema={handleOpenZenCinema}
           onOpenRitual={handleOpenRitual}
           activeSouls={activeSouls}
+          presenceStatus={presenceStatus}
         />
 
         {/* Search, Filter Tabs & Sort Controls */}
@@ -965,7 +1018,7 @@ export default function App() {
             onClose={handleCloseAdmin}
             onToast={showToast}
             echoes={echoes}
-            activeSouls={activeSouls}
+            activeSouls={typeof activeSouls === 'number' ? activeSouls : 0}
           />
         </Suspense>
       )}

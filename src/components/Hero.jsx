@@ -22,7 +22,8 @@ function Hero({
   onOpenMixer, 
   onOpenZenCinema, 
   onOpenRitual, 
-  activeSouls = 24
+  activeSouls = null,
+  presenceStatus = 'live'
 }) {
   const [quoteIndex, setQuoteIndex] = useState(0);
 
@@ -53,7 +54,11 @@ function Hero({
           <span className="hero-badge-separator">•</span>
           <span className="hero-badge-souls">
             <span className="candle-flicker">🕯️</span>
-            <span>{activeSouls} Active Souls</span>
+            <span>
+              {typeof activeSouls === 'number'
+                ? `${activeSouls} Active ${activeSouls === 1 ? 'Soul' : 'Souls'}`
+                : (presenceStatus === 'offline' ? 'Sanctuary Quiet' : 'Connecting...')}
+            </span>
           </span>
         </div>
 

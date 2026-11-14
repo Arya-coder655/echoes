@@ -250,24 +250,40 @@ export async function deleteCommentAsAdmin(id, pin) {
 }
 
 /**
- * Real-Time Active Souls (Presence System)
- * Generates an ephemeral session token strictly kept in sessionStorage.
- * Zero cookies, zero tracking, zero IP addresses recorded.
+ * Real-Time Active Souls (Accurate Presence Tracking)
+ * Generates an anonymous, cryptographically secure random session UUID.
+ * Stored in localStorage so multiple tabs & windows in the same browser
+ * share the identical identifier (1 browser = 1 Active Soul, zero count inflation).
+ * Page refresh reuses the session ID.
+ * Zero PII, zero cookies, zero IP addresses recorded.
  */
 export function getSoulSessionId() {
-  if (typeof window === 'undefined') return 'soul_ssr';
+  if (typeof window === 'undefined') return 'soul_ssr_session';
+  const STORAGE_KEY = 'echoes_soul_session_v3';
   try {
-    let id = sessionStorage.getItem('echoes_soul_session');
-    if (!id) {
-      id = 'soul_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-      sessionStorage.setItem('echoes_soul_session', id);
+    let id = localStorage.getItem(STORAGE_KEY);
+    // Validate UUID format
+    if (!id || typeof id !== 'string' || id.length < 10 || id.length > 64) {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        id = crypto.randomUUID();
+      } else {
+        // Fallback for environments lacking crypto.randomUUID
+        const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+        id = `${s4()}${s4()}-${s4()}-4${s4().substr(0, 3)}-${s4()}-${s4()}${s4()}${s4()}`;
+      }
+      localStorage.setItem(STORAGE_KEY, id);
     }
     return id;
   } catch {
-    return 'soul_guest_' + Math.random().toString(36).slice(2, 8);
+    // In strict private mode when localStorage is denied
+    return 'soul_guest_' + Math.random().toString(36).slice(2, 12);
   }
 }
 
+/**
+ * Send heartbeat to refresh presence in TiDB Cloud
+ * Returns accurate global count of active souls.
+ */
 export async function sendSoulHeartbeat() {
   const sessionId = getSoulSessionId();
   try {
@@ -276,22 +292,59 @@ export async function sendSoulHeartbeat() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId })
     });
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return { activeSouls: data.activeSouls, isOnline: true };
+    return {
+      activeSouls: typeof data.activeSouls === 'number' ? data.activeSouls : null,
+      updatedAt: data.updatedAt || null,
+      status: data.status || 'live',
+      isOnline: true
+    };
   } catch (err) {
-    return { activeSouls: null, isOnline: false };
+    return { activeSouls: null, status: 'offline', isOnline: false };
   }
 }
 
+/**
+ * Fetch current real-time active souls count
+ */
 export async function fetchActiveSouls() {
   try {
     const res = await fetch(`${API_BASE}/presence`);
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return { activeSouls: data.activeSouls, isOnline: true };
+    return {
+      activeSouls: typeof data.activeSouls === 'number' ? data.activeSouls : null,
+      updatedAt: data.updatedAt || null,
+      status: data.status || 'live',
+      isOnline: true
+    };
   } catch (err) {
-    return { activeSouls: null, isOnline: false };
+    return { activeSouls: null, status: 'offline', isOnline: false };
   }
+}
+
+/**
+ * Gracefully notify backend when visitor departs (beacon on pagehide)
+ */
+export function sendSoulLeave() {
+  if (typeof window === 'undefined') return;
+  try {
+    const sessionId = getSoulSessionId();
+    const url = `${API_BASE}/presence/leave`;
+    const payload = JSON.stringify({ sessionId });
+
+    if (navigator.sendBeacon) {
+      const blob = new Blob([payload], { type: 'application/json' });
+      navigator.sendBeacon(url, blob);
+    } else {
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true
+      }).catch(() => {});
+    }
+  } catch {}
 }
 
