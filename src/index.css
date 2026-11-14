@@ -28,11 +28,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html {
   width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
-  overscroll-behavior-y: contain;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -43,6 +40,7 @@ img {
 }
 
 body {
+  width: 100%;
   background-color: var(--bg-main);
   background-image: 
     radial-gradient(circle at 15% 15%, rgba(252, 41, 4, 0.07) 0%, transparent 40%),
@@ -53,7 +51,6 @@ body {
   font-family: var(--font-body);
   line-height: 1.6;
   min-height: 100vh;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -85,6 +82,8 @@ button {
 .app-root {
   position: relative;
   min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -857,9 +856,6 @@ button {
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease, border-color 0.28s ease;
   overflow: hidden;
   box-sizing: border-box;
-  /* Hardware-optimized scrolling: skip layout & GPU raster for off-screen cards */
-  content-visibility: auto;
-  contain-intrinsic-size: 0 280px;
 }
 
 .echo-card:hover {
@@ -6841,7 +6837,6 @@ button {
   position: relative;
   width: 100%;
   min-height: 100vh;
-  overscroll-behavior-y: contain;
 }
 
 .pull-indicator-pill {

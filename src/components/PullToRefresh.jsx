@@ -48,9 +48,6 @@ export default function PullToRefresh({ onRefresh, children }) {
       const diff = currentY.current - startY.current;
 
       if (diff > 0 && window.scrollY <= 0) {
-        if (e.cancelable && diff > 8) {
-          e.preventDefault();
-        }
         if (!rafId.current) {
           rafId.current = requestAnimationFrame(() => {
             const currentDiff = currentY.current - startY.current;
@@ -96,8 +93,8 @@ export default function PullToRefresh({ onRefresh, children }) {
       if (window.scrollY <= 0 && !isRefreshing && e.touches.length === 1) {
         startY.current = e.touches[0].clientY;
         isDragging.current = true;
-        // Dynamically bind move and end only during active top gesture
-        window.addEventListener('touchmove', onTouchMove, { passive: false });
+        // 100% passive touch listeners prevent any main-thread scroll blocking
+        window.addEventListener('touchmove', onTouchMove, { passive: true });
         window.addEventListener('touchend', onTouchEnd, { passive: true });
         window.addEventListener('touchcancel', onTouchEnd, { passive: true });
       }
