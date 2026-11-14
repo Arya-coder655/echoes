@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { 
   X, 
   Send, 
@@ -8,11 +8,30 @@ import {
   User, 
   AlertCircle,
   Flame,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  Moon,
+  HeartPulse,
+  Zap,
+  Hourglass,
+  Heart
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { THEME_PALETTES, CATEGORIES } from '../data/initialEchoes';
 import ThanosAshBurn from './ThanosAshBurn';
+
+const renderCatIcon = (iconName) => {
+  switch (iconName) {
+    case 'Flame': return <Flame size={13} />;
+    case 'Mail': return <Mail size={13} />;
+    case 'Moon': return <Moon size={13} />;
+    case 'HeartPulse': return <HeartPulse size={13} />;
+    case 'Zap': return <Zap size={13} />;
+    case 'Hourglass': return <Hourglass size={13} />;
+    case 'Heart': return <Heart size={13} />;
+    default: return <Sparkles size={13} />;
+  }
+};
 
 export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
   const [category, setCategory] = useState('regret');
@@ -28,6 +47,35 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
 
   const formRef = useRef(null);
   const textareaRef = useRef(null);
+
+  // Prevent background page scrolling & lock scroll position while composer is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (!isBurningAsh) {
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, isBurningAsh, onClose]);
 
   if (!isOpen) return null;
 
@@ -207,6 +255,7 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
           '--theme-glow': currentTheme.glow
         }}
       >
+        {/* 1. FIXED HEADER */}
         <div className="composer-header">
           <div className="composer-title-wrap">
             <Sparkles size={20} className="text-accent" />
@@ -220,271 +269,278 @@ export default function EchoComposer({ isOpen, onClose, onPublish, onToast }) {
           </button>
         </div>
 
-        <div className="composer-layout">
-          {/* Main Form Column or Cathartic Ash Success Screen */}
-          {isBurnSuccess ? (
-            <div className="composer-burned-success-card">
-              <div className="ashes-icon-wrap">
-                <Sparkles size={36} className="text-amber-400" />
-              </div>
-              <h3 className="ashes-title">Consumed by Sacred Fire</h3>
-              <p className="ashes-description">
-                Your words have disintegrated into ash and stardust. They were never posted, saved, or shared with anyone.
-                Take a long, deep breath—your burden has completely dissolved into peace.
-              </p>
-              <div className="ashes-actions">
-                <button 
-                  type="button" 
-                  onClick={() => setIsBurnSuccess(false)} 
-                  className="burn-another-btn"
-                >
-                  <RefreshCw size={15} />
-                  <span>Write Another Reflection</span>
-                </button>
-                <button 
-                  type="button" 
-                  onClick={onClose} 
-                  className="peace-btn"
-                >
-                  Walk in Peace
-                </button>
-              </div>
-            </div>
-          ) : (
-            <form ref={formRef} onSubmit={handleSubmit} noValidate className="composer-form">
-              {error && (
-                <div className="composer-error-banner">
-                  <AlertCircle size={16} />
-                  <span>{error}</span>
+        {/* 2. FORM WRAPPER (wraps scrollable body & fixed footer) */}
+        <form ref={formRef} onSubmit={handleSubmit} noValidate className="composer-modal-form">
+          <div className="composer-modal-body">
+            {isBurnSuccess ? (
+              <div className="composer-burned-success-card">
+                <div className="ashes-icon-wrap">
+                  <Sparkles size={36} className="text-amber-400" />
                 </div>
-              )}
-
-              {/* Category Selector */}
-              <div className="form-group">
-                <label className="form-label">Choose Sanctuary Wall</label>
-                <div className="category-select-buttons">
-                  {CATEGORIES.filter((c) => c.id !== 'all').map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setCategory(cat.id)}
-                      className={`cat-btn ${category === cat.id ? 'active' : ''}`}
-                    >
-                      <span>{cat.icon}</span>
-                      <span>{cat.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recipient Name (Optional) */}
-              <div className="form-group">
-                <label className="form-label">
-                  To Whom? <span className="label-hint">(Optional — e.g. Maya, Dad, Younger Me, The Universe)</span>
-                </label>
-                <div className="input-with-icon">
-                  <User size={16} className="input-icon" />
-                  <input
-                    type="text"
-                    placeholder="Enter name or keep empty for Anonymous..."
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    maxLength={60}
-                    className="composer-text-input"
-                    disabled={isBurningAsh}
-                  />
-                </div>
-              </div>
-
-              {/* Unspoken Message Textarea with Thanos Ash Burn Overlay */}
-              <div className="form-group">
-                <div className="label-with-count">
-                  <label className="form-label">Your Unspoken Words</label>
-                  <span className="char-count">{message.length}/600</span>
-                </div>
-                
-                <div className="composer-textarea-container">
-                  <textarea
-                    ref={textareaRef}
-                    placeholder="What did you never get the courage to say? What do you carry in your chest?..."
-                    value={message}
-                    onChange={(e) => {
-                      setMessage(e.target.value);
-                      if (error) setError('');
-                    }}
-                    maxLength={600}
-                    className="composer-textarea"
-                    disabled={isSubmitting || isBurningAsh}
-                  />
-
-                  {/* Particle & Ash Physics Engine Overlay */}
-                  <ThanosAshBurn 
-                    isBurning={isBurningAsh} 
-                    onComplete={handleAshBurnComplete} 
-                    duration={2400} 
-                  />
-                </div>
-
-                <div className="composer-ritual-hint">
-                  <Flame size={13} className="text-amber-500" />
-                  <span>Don't want to post? You can ignite & let your words dissolve into ash forever.</span>
-                </div>
-              </div>
-
-              {/* Emotion Theme Palette Swatches */}
-              <div className="form-group">
-                <label className="form-label">Emotion Aura Palette</label>
-                <div className="theme-swatch-list">
-                  {THEME_PALETTES.map((palette) => (
-                    <button
-                      key={palette.id}
-                      type="button"
-                      onClick={() => setSelectedThemeId(palette.id)}
-                      className={`theme-swatch ${selectedThemeId === palette.id ? 'selected' : ''}`}
-                      style={{
-                        backgroundColor: palette.color,
-                        boxShadow: selectedThemeId === palette.id ? `0 0 12px ${palette.color}` : 'none'
-                      }}
-                      title={palette.name}
-                      disabled={isBurningAsh}
-                    >
-                      {selectedThemeId === palette.id && <span className="swatch-check">✓</span>}
-                    </button>
-                  ))}
-                </div>
-                <div className="active-theme-name">
-                  Selected Mood: <strong>{currentTheme.name}</strong>
-                </div>
-              </div>
-
-              {/* Optional Image Upload */}
-              <div className="form-group">
-                <label className="form-label">
-                  Attach Memory Image <span className="label-hint">(Optional)</span>
-                </label>
-                {!imagePreview ? (
-                  <label className="image-upload-dropzone">
-                    <ImageIcon size={22} />
-                    <span>Click to choose an image (PNG, JPG)</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden-file-input"
-                      disabled={isBurningAsh}
-                    />
-                  </label>
-                ) : (
-                  <div className="image-preview-wrapper">
-                    <img src={imagePreview} alt="Attached Preview" className="preview-thumb" />
-                    <button type="button" onClick={removeImage} className="remove-image-btn" disabled={isBurningAsh}>
-                      <X size={14} /> Remove Image
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Submit & Burn Actions */}
-              <div className="composer-actions-bar">
-                <button
-                  type="button"
-                  className="mobile-preview-toggle-btn"
-                  onClick={() => setShowLivePreview(!showLivePreview)}
-                  disabled={isBurningAsh}
-                >
-                  <Eye size={16} />
-                  <span>{showLivePreview ? 'Hide Preview' : 'Show Preview'}</span>
-                </button>
-
-                <div className="actions-right">
-                  <button type="button" onClick={onClose} className="cancel-btn" disabled={isBurningAsh}>
-                    Discard
-                  </button>
-
-                  {/* Sacred Hearth Feature: Burn to Ash Instead of Posting */}
-                  <button
-                    type="button"
-                    onClick={handleBurnToAsh}
-                    disabled={isSubmitting || isBurningAsh || !message.trim()}
-                    className={`composer-burn-btn ${isBurningAsh ? 'is-burning' : ''}`}
-                    title="Burn this message to ash and dust without publishing it anywhere"
-                    aria-label="Burn to ash instead of posting"
+                <h3 className="ashes-title">Consumed by Sacred Fire</h3>
+                <p className="ashes-description">
+                  Your words have disintegrated into ash and stardust. They were never posted, saved, or shared with anyone.
+                  Take a long, deep breath—your burden has completely dissolved into peace.
+                </p>
+                <div className="ashes-actions">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsBurnSuccess(false)} 
+                    className="burn-another-btn"
                   >
-                    <Flame size={16} />
-                    <span>{isBurningAsh ? 'Disintegrating to Ash...' : 'Burn to Ash (Don\'t Post)'}</span>
+                    <RefreshCw size={15} />
+                    <span>Write Another Reflection</span>
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting || isBurningAsh}
-                    className="publish-btn"
-                    aria-label="Release Echo"
+                  <button 
+                    type="button" 
+                    onClick={onClose} 
+                    className="peace-btn"
                   >
-                    <Send size={16} />
-                    <span>{isSubmitting ? 'Releasing...' : 'Release Echo'}</span>
+                    Walk in Peace
                   </button>
                 </div>
               </div>
-            </form>
-          )}
-
-          {/* Live Preview Column */}
-          {showLivePreview && !isBurnSuccess && (
-            <div className="composer-preview-column">
-              <div className="preview-column-header">
-                <Eye size={16} className="text-accent" />
-                <span>Live Card Preview</span>
-              </div>
-              <div 
-                className="preview-card-wrap"
-                style={{
-                  '--theme-color': currentTheme.color,
-                  '--theme-secondary': currentTheme.secondary,
-                  '--theme-bg': currentTheme.bg,
-                  '--theme-border': currentTheme.border,
-                  '--theme-glow': currentTheme.glow
-                }}
-              >
-                <div className="echo-card preview-card">
-                  <div className="echo-card-top-glow" />
-                  <div className="echo-card-header">
-                    <div className="header-left">
-                      <span className="echo-category-badge">
-                        {CATEGORIES.find((c) => c.id === category)?.label || 'Echo'}
-                      </span>
-                      <span className="echo-id-pill">#ECHO-PREVIEW</span>
-                    </div>
-                    <span className="echo-timestamp">Just now</span>
-                  </div>
-
-                  <div className="echo-recipient-row">
-                    <User size={13} className="recipient-icon" />
-                    <span className="echo-recipient-text">
-                      {name.trim() ? (name.trim().startsWith('To:') ? name.trim() : `To: ${name.trim()}`) : 'To: The Universe (Anonymous)'}
-                    </span>
-                  </div>
-
-                  <div className="echo-card-body">
-                    <p className="echo-message-text preview-text">
-                      {message || 'Your unspoken message will gently appear here as you type...'}
-                    </p>
-                  </div>
-
-                  {imagePreview && (
-                    <div className="echo-image-container">
-                      <img src={imagePreview} alt="Preview attachment" className="echo-attached-img" />
+            ) : (
+              <div className="composer-layout">
+                {/* Main Form Fields Column */}
+                <div className="composer-form-content">
+                  {error && (
+                    <div className="composer-error-banner">
+                      <AlertCircle size={16} />
+                      <span>{error}</span>
                     </div>
                   )}
 
-                  <div className="echo-card-footer">
-                    <span className="text-xs text-muted">Protected under anonymity</span>
+                  {/* Category Selector */}
+                  <div className="form-group">
+                    <label className="form-label">Choose Sanctuary Wall</label>
+                    <div className="category-select-buttons">
+                      {CATEGORIES.filter((c) => c.id !== 'all').map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setCategory(cat.id)}
+                          className={`cat-btn ${category === cat.id ? 'active' : ''}`}
+                        >
+                          <span className="cat-btn-icon">{renderCatIcon(cat.icon)}</span>
+                          <span>{cat.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recipient Name (Optional) */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      To Whom? <span className="label-hint">(Optional — e.g. Maya, Dad, Younger Me, The Universe)</span>
+                    </label>
+                    <div className="input-with-icon">
+                      <User size={16} className="input-icon" />
+                      <input
+                        type="text"
+                        placeholder="Enter name or keep empty for Anonymous..."
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        maxLength={60}
+                        className="composer-text-input"
+                        disabled={isBurningAsh}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Unspoken Message Textarea with Thanos Ash Burn Overlay */}
+                  <div className="form-group">
+                    <div className="label-with-count">
+                      <label className="form-label">Your Unspoken Words</label>
+                      <span className="char-count">{message.length}/600</span>
+                    </div>
+                    
+                    <div className="composer-textarea-container">
+                      <textarea
+                        ref={textareaRef}
+                        placeholder="What did you never get the courage to say? What do you carry in your chest?..."
+                        value={message}
+                        onChange={(e) => {
+                          setMessage(e.target.value);
+                          if (error) setError('');
+                        }}
+                        maxLength={600}
+                        className="composer-textarea"
+                        disabled={isSubmitting || isBurningAsh}
+                      />
+
+                      {/* Particle & Ash Physics Engine Overlay */}
+                      <ThanosAshBurn 
+                        isBurning={isBurningAsh} 
+                        onComplete={handleAshBurnComplete} 
+                        duration={2400} 
+                      />
+                    </div>
+
+                    <div className="composer-ritual-hint">
+                      <Flame size={13} className="text-amber-500" />
+                      <span>Don't want to post? You can ignite & let your words dissolve into ash forever.</span>
+                    </div>
+                  </div>
+
+                  {/* Emotion Theme Palette Swatches */}
+                  <div className="form-group">
+                    <label className="form-label">Emotion Aura Palette</label>
+                    <div className="theme-swatch-list">
+                      {THEME_PALETTES.map((palette) => (
+                        <button
+                          key={palette.id}
+                          type="button"
+                          onClick={() => setSelectedThemeId(palette.id)}
+                          className={`theme-swatch ${selectedThemeId === palette.id ? 'selected' : ''}`}
+                          style={{
+                            backgroundColor: palette.color,
+                            boxShadow: selectedThemeId === palette.id ? `0 0 12px ${palette.color}` : 'none'
+                          }}
+                          title={palette.name}
+                          disabled={isBurningAsh}
+                        >
+                          {selectedThemeId === palette.id && <span className="swatch-check">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="active-theme-name">
+                      Selected Mood: <strong>{currentTheme.name}</strong>
+                    </div>
+                  </div>
+
+                  {/* Optional Image Upload */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      Attach Memory Image <span className="label-hint">(Optional)</span>
+                    </label>
+                    {!imagePreview ? (
+                      <label className="image-upload-dropzone">
+                        <ImageIcon size={22} />
+                        <span>Click to choose an image (PNG, JPG)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden-file-input"
+                          disabled={isBurningAsh}
+                        />
+                      </label>
+                    ) : (
+                      <div className="image-preview-wrapper">
+                        <img src={imagePreview} alt="Attached Preview" className="preview-thumb" />
+                        <button type="button" onClick={removeImage} className="remove-image-btn" disabled={isBurningAsh}>
+                          <X size={14} /> Remove Image
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* Live Preview Column */}
+                {showLivePreview && (
+                  <div className="composer-preview-column">
+                    <div className="preview-column-header">
+                      <Eye size={16} className="text-accent" />
+                      <span>Live Card Preview</span>
+                    </div>
+                    <div 
+                      className="preview-card-wrap"
+                      style={{
+                        '--theme-color': currentTheme.color,
+                        '--theme-secondary': currentTheme.secondary,
+                        '--theme-bg': currentTheme.bg,
+                        '--theme-border': currentTheme.border,
+                        '--theme-glow': currentTheme.glow
+                      }}
+                    >
+                      <div className="echo-card preview-card">
+                        <div className="echo-card-top-glow" />
+                        <div className="echo-card-header">
+                          <div className="header-left">
+                            <span className="echo-category-badge">
+                              {CATEGORIES.find((c) => c.id === category)?.label || 'Echo'}
+                            </span>
+                            <span className="echo-id-pill">#ECHO-PREVIEW</span>
+                          </div>
+                          <span className="echo-timestamp">Just now</span>
+                        </div>
+
+                        <div className="echo-recipient-row">
+                          <User size={13} className="recipient-icon" />
+                          <span className="echo-recipient-text">
+                            {name.trim() ? (name.trim().startsWith('To:') ? name.trim() : `To: ${name.trim()}`) : 'To: The Universe (Anonymous)'}
+                          </span>
+                        </div>
+
+                        <div className="echo-card-body">
+                          <p className="echo-message-text preview-text">
+                            {message || 'Your unspoken message will gently appear here as you type...'}
+                          </p>
+                        </div>
+
+                        {imagePreview && (
+                          <div className="echo-image-container">
+                            <img src={imagePreview} alt="Preview attachment" className="echo-attached-img" />
+                          </div>
+                        )}
+
+                        <div className="echo-card-footer">
+                          <span className="text-xs text-muted">Protected under anonymity</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 3. FIXED / ALWAYS ACCESSIBLE FOOTER ACTIONS BAR */}
+          {!isBurnSuccess && (
+            <div className="composer-footer-bar">
+              <button
+                type="button"
+                className="mobile-preview-toggle-btn"
+                onClick={() => setShowLivePreview(!showLivePreview)}
+                disabled={isBurningAsh}
+              >
+                <Eye size={16} />
+                <span>{showLivePreview ? 'Hide Preview' : 'Show Preview'}</span>
+              </button>
+
+              <div className="actions-right">
+                <button type="button" onClick={onClose} className="cancel-btn" disabled={isBurningAsh}>
+                  Discard
+                </button>
+
+                {/* Sacred Hearth Feature: Burn to Ash Instead of Posting */}
+                <button
+                  type="button"
+                  onClick={handleBurnToAsh}
+                  disabled={isSubmitting || isBurningAsh || !message.trim()}
+                  className={`composer-burn-btn ${isBurningAsh ? 'is-burning' : ''}`}
+                  title="Burn this message to ash and dust without publishing it anywhere"
+                  aria-label="Burn to ash instead of posting"
+                >
+                  <Flame size={16} />
+                  <span>{isBurningAsh ? 'Disintegrating to Ash...' : 'Burn to Ash (Don\'t Post)'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || isBurningAsh}
+                  className="publish-btn"
+                  aria-label="Release Echo"
+                >
+                  <Send size={16} />
+                  <span>{isSubmitting ? 'Releasing...' : 'Release Echo'}</span>
+                </button>
               </div>
             </div>
           )}
-        </div>
+        </form>
       </div>
     </div>
   );

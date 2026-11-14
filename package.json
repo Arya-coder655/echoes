@@ -18,6 +18,7 @@
     "test:burn": "npm run build && node scripts/test-thanos-burn.js",
     "test:burn:mobile": "npm run build && node scripts/test-mobile-burn.js",
     "test:responsive": "npm run build && node scripts/test-responsive-matrix.js",
+    "test:composer": "npm run build && node scripts/test-composer-responsive.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },
