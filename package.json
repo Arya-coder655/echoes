@@ -17,6 +17,7 @@
     "test:pwa": "npm run build && node scripts/test-pwa.js",
     "test:burn": "npm run build && node scripts/test-thanos-burn.js",
     "test:burn:mobile": "npm run build && node scripts/test-mobile-burn.js",
+    "test:responsive": "npm run build && node scripts/test-responsive-matrix.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },

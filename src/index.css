@@ -30,17 +30,23 @@
 
 html {
   width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
-img {
+img, video, canvas {
   max-width: 100%;
   height: auto;
 }
 
 body {
   width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   background-color: var(--bg-main);
   background-image: 
     radial-gradient(circle at 15% 15%, rgba(252, 41, 4, 0.07) 0%, transparent 40%),
@@ -51,7 +57,25 @@ body {
   font-family: var(--font-body);
   line-height: 1.6;
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* TV & Keyboard Accessible Focus Ring */
+*:focus-visible {
+  outline: 2px solid #fc2904 !important;
+  outline-offset: 2px !important;
+}
+
+/* Touch Friendly Targets on Coarse Pointers */
+@media (pointer: coarse) {
+  button, 
+  [role="button"],
+  .action-pill,
+  .minimal-icon-btn,
+  .footer-links-list button {
+    touch-action: manipulation;
+  }
 }
 
 /* Custom Scrollbar */
@@ -1149,6 +1173,11 @@ button {
 .mixer-modal-panel {
   width: 100%;
   max-width: 560px;
+  max-height: min(92vh, 92dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
   background: var(--bg-surface-elevated);
   border: 1px solid rgba(56, 189, 248, 0.3);
   border-radius: var(--radius-lg);
@@ -1615,6 +1644,11 @@ button {
 .ritual-modal-panel {
   width: 100%;
   max-width: 580px;
+  max-height: min(92vh, 92dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
   background: var(--bg-surface-elevated);
   border: 1px solid rgba(252, 41, 4, 0.35);
   border-radius: var(--radius-lg);
@@ -2392,15 +2426,30 @@ button {
 }
 
 .drawer-header {
-  padding: 20px 24px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
-.drawer-header-info { display: flex; align-items: center; gap: 10px; }
-.drawer-title { font-size: 1.15rem; }
+.drawer-header-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.drawer-title {
+  font-size: clamp(0.92rem, 3.5vw, 1.15rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .drawer-counter {
   background: rgba(252, 41, 4, 0.2);
   color: #ff6b4a;
@@ -2458,21 +2507,32 @@ button {
 .comment-body { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; }
 
 .drawer-input-form {
-  padding: 18px 24px;
+  padding: 14px 18px;
   border-top: 1px solid var(--border-subtle);
   background: rgba(10, 10, 15, 0.6);
+  box-sizing: border-box;
+  width: 100%;
 }
 
-.drawer-input-wrapper { display: flex; align-items: center; gap: 8px; }
+.drawer-input-wrapper { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .drawer-comment-input {
   flex: 1;
-  padding: 11px 16px;
+  min-width: 0;
+  padding: 10px 14px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   color: #ffffff;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   outline: none;
+  box-sizing: border-box;
 }
 .drawer-comment-input:focus { border-color: var(--accent-flame); }
 
@@ -2495,6 +2555,11 @@ button {
 .share-modal-panel {
   width: 100%;
   max-width: 480px;
+  max-height: min(92vh, 92dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-highlight);
   border-radius: var(--radius-lg);
@@ -3128,7 +3193,8 @@ button {
   .about-modal-backdrop,
   .report-modal-backdrop,
   .drawer-backdrop,
-  .beer-modal-backdrop {
+  .beer-modal-backdrop,
+  .install-modal-backdrop {
     padding: 0;
     align-items: flex-end;
   }
@@ -3141,7 +3207,8 @@ button {
   .about-modal-panel,
   .report-modal-window,
   .drawer-panel,
-  .beer-modal-card {
+  .beer-modal-card,
+  .install-modal-card {
     max-width: 100%;
     width: 100%;
     max-height: min(92vh, 760px);
@@ -3162,7 +3229,8 @@ button {
   .well-modal-panel::before,
   .share-modal-panel::before,
   .report-modal-window::before,
-  .drawer-panel::before {
+  .drawer-panel::before,
+  .install-modal-card::before {
     content: '';
     display: block;
     width: 38px;
@@ -3251,6 +3319,12 @@ button {
     border-top: 1px solid var(--border-highlight);
     height: auto;
     max-height: min(92vh, 760px);
+    animation: drawerSheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes drawerSheetSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
   }
   .drawer-header {
     padding: 14px 18px;
@@ -3710,8 +3784,8 @@ button {
   }
 }
 
-/* Extra small devices under 290px */
-@media (max-width: 290px) {
+/* Narrow mobile devices under 340px (iPhone SE 1st gen, Galaxy Fold cover) */
+@media (max-width: 340px) {
   .echoes-grid {
     column-count: 1;
     column-gap: 0;
@@ -3805,6 +3879,11 @@ button {
   border-radius: 18px;
   width: 100%;
   max-width: 480px;
+  max-height: min(92vh, 92dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
   padding: 24px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(244, 63, 94, 0.1);
   color: var(--text-primary);
@@ -6177,6 +6256,11 @@ button {
   position: relative;
   width: 100%;
   max-width: 460px;
+  max-height: min(92vh, 92dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
   background: radial-gradient(circle at 50% 0%, rgba(252, 41, 4, 0.12), transparent 70%), #12121f;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
@@ -7143,7 +7227,6 @@ button {
 
 .ritual-modal-panel {
   position: relative;
-  overflow: visible; /* Allows upward ash & smoke drift */
   transition: box-shadow 0.4s ease, border-color 0.4s ease;
 }
 
@@ -7253,6 +7336,178 @@ button {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(251, 101, 20, 0.2);
   animation: fadeIn 0.4s ease-out;
   width: 100%;
+}
+
+/* =========================================================
+   LANDSCAPE & SHORT VIEWPORTS (Phones in landscape, height <= 550px)
+   ========================================================= */
+@media (max-height: 550px) {
+  /* Center modals with safe-area padding instead of bottom sheet */
+  .composer-modal-backdrop,
+  .mixer-modal-backdrop,
+  .ritual-modal-backdrop,
+  .well-modal-backdrop,
+  .share-modal-backdrop,
+  .about-modal-backdrop,
+  .report-modal-backdrop,
+  .beer-modal-backdrop,
+  .install-modal-backdrop,
+  .admin-modal-backdrop,
+  .drawer-backdrop {
+    padding: 8px max(12px, env(safe-area-inset-right, 12px)) 8px max(12px, env(safe-area-inset-left, 12px)) !important;
+    align-items: center !important;
+  }
+
+  .composer-modal-window,
+  .mixer-modal-panel,
+  .ritual-modal-panel,
+  .well-modal-panel,
+  .share-modal-panel,
+  .about-modal-panel,
+  .report-modal-window,
+  .beer-modal-card,
+  .install-modal-card,
+  .admin-modal-window,
+  .drawer-panel {
+    max-width: min(92vw, 680px) !important;
+    width: 100% !important;
+    max-height: 96vh !important;
+    max-height: 96dvh !important;
+    border-radius: 16px !important;
+    padding: 14px 18px !important;
+    margin: auto !important;
+  }
+
+  .drawer-panel {
+    animation: modalFadeIn 0.25s ease-out !important;
+  }
+
+  /* Hide bottom-sheet drag handle in landscape */
+  .beer-modal-card::before,
+  .about-modal-panel::before,
+  .composer-modal-window::before,
+  .mixer-modal-panel::before,
+  .ritual-modal-panel::before,
+  .well-modal-panel::before,
+  .share-modal-panel::before,
+  .report-modal-window::before,
+  .drawer-panel::before,
+  .install-modal-card::before {
+    display: none !important;
+  }
+
+  /* 2-column mixer tracks layout for short viewports */
+  .tracks-mixer-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Catharsis ritual compact landscape layout */
+  .ritual-prompt {
+    display: none !important;
+  }
+
+  .parchment-container {
+    margin-bottom: 8px !important;
+    padding: 8px 12px !important;
+  }
+
+  .parchment-textarea {
+    min-height: 65px !important;
+  }
+
+  /* Composer compact landscape layout */
+  .composer-textarea {
+    min-height: 80px !important;
+  }
+
+  .composer-header {
+    padding-bottom: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Zen cinema controls for landscape */
+  .zen-top-bar {
+    padding: 8px 18px !important;
+  }
+  .zen-bottom-bar {
+    padding: 6px 14px !important;
+  }
+  .zen-quote-text {
+    font-size: clamp(0.95rem, 3.2vw, 1.35rem) !important;
+    line-height: 1.4 !important;
+  }
+}
+
+/* =========================================================
+   LARGE DISPLAYS & DESKTOP MONITORS (>= 1920px)
+   ========================================================= */
+@media (min-width: 1920px) {
+  .main-content-wrapper {
+    max-width: 1680px;
+  }
+  .echoes-grid {
+    column-count: 4;
+    column-gap: 22px;
+  }
+  @supports (grid-template-rows: masonry) {
+    .echoes-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 22px;
+    }
+  }
+}
+
+/* =========================================================
+   ULTRA-WIDE, 4K DISPLAYS & SMART TVs (>= 2560px)
+   ========================================================= */
+@media (min-width: 2560px) {
+  html {
+    font-size: 18px;
+  }
+
+  .main-content-wrapper {
+    max-width: 2160px;
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+
+  .minimal-navbar-container {
+    max-width: 2160px;
+  }
+
+  .hero-section {
+    max-width: 1440px;
+    padding: 80px 32px 50px;
+  }
+
+  .hero-title {
+    font-size: clamp(3rem, 4.2vw, 4.8rem);
+  }
+
+  .hero-description {
+    max-width: 880px;
+    font-size: 1.25rem;
+  }
+
+  .echoes-grid {
+    column-count: 4;
+    column-gap: 28px;
+  }
+
+  @supports (grid-template-rows: masonry) {
+    .echoes-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+    }
+  }
+
+  .composer-modal-window,
+  .mixer-modal-panel,
+  .ritual-modal-panel,
+  .about-modal-panel {
+    max-width: 720px;
+  }
 }
 
 
