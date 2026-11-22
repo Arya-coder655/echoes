@@ -765,7 +765,7 @@ export default function MyEchoModal({
                         <MessageSquare size={24} className="text-cyan-400" />
                       </div>
                       <h3>No reflections written yet</h3>
-                      <p>Your reflections will find their place here. Offer comforting words to fellow souls across the walls.</p>
+                      <p>Your reflections will find their place here. Offer comforting words to strangers across the walls.</p>
                       <button
                         type="button"
                         className="minimal-cta-btn empty-action-btn"
@@ -835,7 +835,7 @@ export default function MyEchoModal({
                         <CornerDownRight size={24} className="text-emerald-400" />
                       </div>
                       <h3>Your Echoes are quiet for now</h3>
-                      <p>Replies will appear here when a fellow soul comments on your published whispers.</p>
+                      <p>Replies will appear here when a stranger comments on your published whispers.</p>
                       <button
                         type="button"
                         className="minimal-cta-btn empty-action-btn"
@@ -855,7 +855,7 @@ export default function MyEchoModal({
                           <div className="my-card-header">
                             <div className="reply-author-row">
                               {!rep.isRead && <span className="reply-unread-dot" title="New unread reply" />}
-                              <span className="reply-author-label">A fellow soul replied:</span>
+                              <span className="reply-author-label">Stranger replied:</span>
                             </div>
                             <span className="timestamp-text">
                               <Clock size={11} />
@@ -1031,9 +1031,9 @@ export default function MyEchoModal({
                             <div className="notif-content-col">
                               <p className="notif-text">
                                 {notif.type === 'echo_reply'
-                                  ? `A fellow soul reflected: "${notif.snippet}"`
+                                  ? `Stranger reflected: "${notif.snippet}"`
                                   : notif.type === 'comment_reply'
-                                  ? `New reply to your reflection: "${notif.snippet}"`
+                                  ? `Stranger replied: "${notif.snippet}"`
                                   : notif.snippet}
                               </p>
                               <span className="notif-time">{formatTimeAgo(notif.createdAt)}</span>

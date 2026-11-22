@@ -405,7 +405,7 @@ export async function getAllEchoes({ category = 'all', search = '', sortBy = 'ne
 
   // Fetch comments for all returned echoes
   const [allComments] = await pool.query(
-    'SELECT id, echo_id, text, timestamp as time FROM comments ORDER BY timestamp DESC'
+    'SELECT id, echo_id, text, timestamp as time, parent_id as parentId FROM comments ORDER BY timestamp ASC'
   );
 
   const commentsMap = {};
@@ -439,7 +439,7 @@ export async function getEchoById(id) {
   const row = rows[0];
 
   const [comments] = await pool.query(
-    'SELECT id, echo_id, text, timestamp as time FROM comments WHERE echo_id = ? ORDER BY timestamp DESC',
+    'SELECT id, echo_id, text, timestamp as time, parent_id as parentId FROM comments WHERE echo_id = ? ORDER BY timestamp ASC',
     [id]
   );
 

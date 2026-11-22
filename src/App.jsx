@@ -450,18 +450,19 @@ export default function App() {
     });
   }, [showToast]);
 
-  const handleAddComment = useCallback(async (id, text) => {
-    const res = await addCommentInDb(id, text);
+  const handleAddComment = useCallback(async (id, text, parentId = null) => {
+    const res = await addCommentInDb(id, text, parentId);
     const newComment = (res && res.data) || {
       id: `comm-${Date.now()}`,
       text,
-      time: Date.now()
+      time: Date.now(),
+      parentId: parentId || null
     };
 
     setEchoes((prev) =>
       prev.map((echo) => {
         if (echo.id === id) {
-          const updatedComments = [newComment, ...(echo.comments || [])];
+          const updatedComments = [...(echo.comments || []), newComment];
           return { ...echo, comments: updatedComments };
         }
         return echo;
@@ -472,13 +473,14 @@ export default function App() {
       if (prev && prev.id === id) {
         return {
           ...prev,
-          comments: [newComment, ...(prev.comments || [])]
+          comments: [...(prev.comments || []), newComment]
         };
       }
       return prev;
     });
 
-    showToast('Your reflection has been anonymously shared and saved.');
+    showToast(parentId ? 'Your reply to this stranger has been shared.' : 'Your reflection has been anonymously shared and saved.');
+    return { success: true, comment: newComment };
   }, [showToast]);
 
   const handlePublishEcho = useCallback(async (newEcho) => {
