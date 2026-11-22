@@ -13,6 +13,7 @@ import {
   Share2,
   Copy,
   Check,
+  Download,
   AlertTriangle,
   User,
   Eye,
@@ -74,6 +75,7 @@ export default function MyEchoModal({
 
   // Identity recovery & key state
   const [identity, setIdentity] = useState(() => getAnonymousIdentity());
+  const [copiedId, setCopiedId] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
   const [recoveryInput, setRecoveryInput] = useState('');
@@ -244,6 +246,37 @@ export default function MyEchoModal({
     setTimeout(() => setCopiedKey(false), 2500);
   };
 
+  const handleCopyId = () => {
+    const rawId = identity?.identityId || '';
+    if (!rawId) return;
+    navigator.clipboard.writeText(rawId);
+    setCopiedId(true);
+    onToast?.('Anonymous ID copied to clipboard');
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  const handleDownloadKey = () => {
+    const key = generateRecoveryKey();
+    if (!key) return;
+    const blob = new Blob([
+      `ECHOES SANCTUARY — ANONYMOUS RECOVERY KEY\n` +
+      `==========================================\n` +
+      `Identity ID: ${identity?.identityId || 'anonymous'}\n` +
+      `Recovery Key: ${key}\n` +
+      `Exported: ${new Date().toISOString()}\n\n` +
+      `KEEP THIS FILE PRIVATE.\n` +
+      `Pasting this recovery key into My Echo on any browser will restore\n` +
+      `your published Echoes, reflections, and bookmarks without passwords or email.`
+    ], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `echoes-recovery-key-${(identity?.identityId || 'soul').slice(5, 13)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    onToast?.('Recovery key downloaded as a backup text file');
+  };
+
   // Restore Identity from key
   const handleRestoreIdentity = async (e) => {
     e.preventDefault();
@@ -326,10 +359,16 @@ export default function MyEchoModal({
             <div>
               <div className="my-echo-title-row">
                 <h2 id="my-echo-title" className="my-echo-title">My Echo</h2>
-                <span className="my-echo-pill-anon" title="Cryptographically random anonymous identifier">
+                <button
+                  type="button"
+                  className="my-echo-pill-anon"
+                  onClick={handleCopyId}
+                  title="Click to copy anonymous ID"
+                >
                   <ShieldCheck size={12} className="text-emerald-400" />
                   <span>#{identity?.identityId ? identity.identityId.slice(5, 13) : 'anon'}</span>
-                </span>
+                  {copiedId ? <Check size={11} className="text-emerald-300" /> : <Copy size={11} className="copy-anon-icon" />}
+                </button>
               </div>
               <p className="my-echo-subtitle">
                 Your private anonymous space in the sanctuary &middot; Zero PII &middot; Stored locally
@@ -366,32 +405,48 @@ export default function MyEchoModal({
             className={`metric-item ${activeTab === 'posts' ? 'metric-active' : ''}`}
             onClick={() => setActiveTab('posts')}
           >
-            <span className="metric-val">{overview.totalPosts}</span>
+            <div className="metric-header-row">
+              <Feather size={14} className="metric-icon metric-icon-posts" />
+              <span className="metric-val">{overview.totalPosts}</span>
+            </div>
             <span className="metric-label">Published</span>
+            <span className="metric-sublabel">Your spoken echoes</span>
           </div>
           <div
             className={`metric-item ${activeTab === 'bookmarks' ? 'metric-active' : ''}`}
             onClick={() => setActiveTab('bookmarks')}
           >
-            <span className="metric-val">{overview.totalBookmarks}</span>
+            <div className="metric-header-row">
+              <Bookmark size={14} className="metric-icon metric-icon-bookmarks" />
+              <span className="metric-val">{overview.totalBookmarks}</span>
+            </div>
             <span className="metric-label">Saved</span>
+            <span className="metric-sublabel">Bookmarked echoes</span>
           </div>
           <div
             className={`metric-item ${activeTab === 'reflections' ? 'metric-active' : ''}`}
             onClick={() => setActiveTab('reflections')}
           >
-            <span className="metric-val">{overview.totalReflections}</span>
+            <div className="metric-header-row">
+              <MessageSquare size={14} className="metric-icon metric-icon-reflections" />
+              <span className="metric-val">{overview.totalReflections}</span>
+            </div>
             <span className="metric-label">Reflections</span>
+            <span className="metric-sublabel">Your shared thoughts</span>
           </div>
           <div
             className={`metric-item ${activeTab === 'replies' || activeTab === 'notifications' ? 'metric-active' : ''}`}
             onClick={() => setActiveTab('replies')}
           >
-            <div className="metric-val-notif">
-              <span className="metric-val">{overview.unreadNotifications}</span>
-              {overview.unreadNotifications > 0 && <span className="metric-dot-pulse" />}
+            <div className="metric-header-row">
+              <div className="metric-val-notif">
+                <Bell size={14} className="metric-icon metric-icon-notifs" />
+                <span className="metric-val">{overview.unreadNotifications}</span>
+                {overview.unreadNotifications > 0 && <span className="metric-dot-pulse" />}
+              </div>
             </div>
-            <span className="metric-label">Unread</span>
+            <span className="metric-label">Replies & Notices</span>
+            <span className="metric-sublabel">Soul responses</span>
           </div>
         </div>
 
@@ -877,6 +932,14 @@ export default function MyEchoModal({
                           title="Copy recovery key"
                         >
                           {copiedKey ? <Check size={15} className="text-emerald-400" /> : <Copy size={15} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="key-action-icon-btn"
+                          onClick={handleDownloadKey}
+                          title="Download key backup file (.txt)"
+                        >
+                          <Download size={15} />
                         </button>
                       </div>
 

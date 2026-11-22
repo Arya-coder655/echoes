@@ -103,12 +103,14 @@ function Navbar({
             <button
               type="button"
               onClick={onOpenMyEcho}
-              className="minimal-icon-btn my-echo-hover"
-              title="My Echo — Your Personal Anonymous Space"
+              className="my-echo-nav-btn"
+              title="My Echo — Your Personal Anonymous Sanctuary"
               aria-label="My Echo"
             >
-              <User size={17} className="text-amber-400" />
-              <span className="nav-my-echo-label nav-desktop-only">My Echo</span>
+              <div className="my-echo-nav-avatar">
+                <User size={15} className="my-echo-nav-user-icon" />
+              </div>
+              <span className="my-echo-nav-text">My Echo</span>
               {unreadNotifs > 0 && (
                 <span className="my-echo-nav-badge" title={`${unreadNotifs} unread notifications`}>
                   {unreadNotifs > 9 ? '9+' : unreadNotifs}
