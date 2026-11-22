@@ -25,7 +25,21 @@ import {
   getActiveSoulsCount,
   removeSoulSession,
   pruneExpiredSessions,
-  logAdminAction
+  logAdminAction,
+  registerOrVerifyIdentity,
+  verifyIdentityCredentials,
+  recoverIdentity,
+  getMyEchoOverview,
+  getMyEchoPosts,
+  deleteMyEchoPost,
+  getMyEchoBookmarks,
+  addMyEchoBookmark,
+  removeMyEchoBookmark,
+  getMyEchoComments,
+  deleteMyEchoComment,
+  getMyEchoReplies,
+  getMyEchoNotifications,
+  markMyEchoNotificationsRead
 } from './db.js';
 import {
   whisperRateLimiter,
@@ -338,10 +352,21 @@ app.get('/api/echoes/:id', async (req, res) => {
 
 /**
  * Create a new echo / whisper (with rate limiting & spam protection)
+ * Automatically associates with anonymous identity if valid credentials are provided
  */
 app.post('/api/echoes', whisperRateLimiter, validateWhisperContent, async (req, res) => {
   try {
     const { name, category, message, image, themeId } = req.body;
+
+    let authorId = null;
+    const identityId = req.headers['x-echo-identity-id'];
+    const identitySecret = req.headers['x-echo-identity-secret'];
+    if (identityId && identitySecret) {
+      const isValid = await verifyIdentityCredentials(identityId.toString().trim(), identitySecret.toString().trim());
+      if (isValid) {
+        authorId = identityId.toString().trim();
+      }
+    }
 
     const newEcho = {
       id: `ECHO-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -352,7 +377,8 @@ app.post('/api/echoes', whisperRateLimiter, validateWhisperContent, async (req, 
       likes: 1, // Author's silent flame
       shares: 0,
       themeId: themeId || 'amber-nostalgia',
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      authorId
     };
 
     const created = await createEcho(newEcho);
@@ -401,10 +427,11 @@ app.post('/api/echoes/:id/share', async (req, res) => {
 
 /**
  * Add a comment / reflection (with rate limiter)
+ * Automatically associates with anonymous identity and parent comment if provided
  */
 app.post('/api/echoes/:id/comments', commentRateLimiter, async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, parentId } = req.body;
     if (!text || !text.trim()) {
       return res.status(400).json({ error: 'Reflection comment cannot be empty.' });
     }
@@ -413,7 +440,17 @@ app.post('/api/echoes/:id/comments', commentRateLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Comment exceeds 1,000 characters.' });
     }
 
-    const comment = await addComment(req.params.id, text.trim());
+    let authorId = null;
+    const identityId = req.headers['x-echo-identity-id'];
+    const identitySecret = req.headers['x-echo-identity-secret'];
+    if (identityId && identitySecret) {
+      const isValid = await verifyIdentityCredentials(identityId.toString().trim(), identitySecret.toString().trim());
+      if (isValid) {
+        authorId = identityId.toString().trim();
+      }
+    }
+
+    const comment = await addComment(req.params.id, text.trim(), authorId, parentId || null);
     res.status(201).json(comment);
   } catch (err) {
     console.error('Error adding comment:', err);
@@ -440,6 +477,256 @@ app.post('/api/echoes/:id/report', async (req, res) => {
   } catch (err) {
     console.error('Error reporting echo:', err);
     res.status(500).json({ error: 'Failed to submit report.' });
+  }
+});
+
+// -------------------------------------------------------------
+// MY ECHO: Anonymous Identity & Personal Dashboard API
+// Zero PII, cryptographically authenticated, rate-limited
+// -------------------------------------------------------------
+
+/**
+ * Middleware: Verify Anonymous Identity Credentials
+ * Authenticates private requests to /api/my-echo/*
+ */
+async function requireAnonymousAuth(req, res, next) {
+  const identityId = req.headers['x-echo-identity-id'] || req.query?.identityId;
+  const identitySecret = req.headers['x-echo-identity-secret'] || req.query?.identitySecret;
+
+  if (!identityId || !identitySecret) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized: Missing anonymous identity credentials',
+      code: 'AUTH_REQUIRED'
+    });
+  }
+
+  try {
+    const isValid = await verifyIdentityCredentials(identityId.toString().trim(), identitySecret.toString().trim());
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized: Invalid anonymous credentials or secret mismatch',
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+
+    req.anonymousIdentity = { id: identityId.toString().trim() };
+    next();
+  } catch (authErr) {
+    console.error('Anonymous auth check error:', authErr);
+    return res.status(500).json({ success: false, error: 'Authentication verification failure' });
+  }
+}
+
+/**
+ * Register or sync an anonymous identity with cryptographic salt + hash
+ */
+app.post('/api/my-echo/identity', async (req, res) => {
+  try {
+    const { identityId, identitySecret } = req.body || {};
+    if (!identityId || !identitySecret || typeof identityId !== 'string' || typeof identitySecret !== 'string') {
+      return res.status(400).json({ success: false, error: 'Valid identityId and identitySecret are required' });
+    }
+
+    if (identityId.length < 8 || identityId.length > 64) {
+      return res.status(400).json({ success: false, error: 'identityId length out of allowed bounds' });
+    }
+
+    const result = await registerOrVerifyIdentity(identityId.trim(), identitySecret.trim());
+    if (!result.success) {
+      return res.status(401).json(result);
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error in /api/my-echo/identity:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * Restore an anonymous identity using an exportable recovery key
+ */
+app.post('/api/my-echo/identity/recover', async (req, res) => {
+  try {
+    const { recoveryKey } = req.body || {};
+    if (!recoveryKey || typeof recoveryKey !== 'string') {
+      return res.status(400).json({ success: false, error: 'Recovery key is required' });
+    }
+
+    const result = await recoverIdentity(recoveryKey);
+    if (!result.success) {
+      return res.status(401).json(result);
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error in /api/my-echo/identity/recover:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * Get My Echo Overview (counts of posts, bookmarks, reflections, unread notifications)
+ */
+app.get('/api/my-echo/overview', requireAnonymousAuth, async (req, res) => {
+  try {
+    const overview = await getMyEchoOverview(req.anonymousIdentity.id);
+    res.json({ success: true, ...overview });
+  } catch (err) {
+    console.error('Error fetching My Echo overview:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch personal sanctuary overview' });
+  }
+});
+
+/**
+ * Get user's published Echoes
+ */
+app.get('/api/my-echo/posts', requireAnonymousAuth, async (req, res) => {
+  try {
+    const { page, limit } = req.query;
+    const posts = await getMyEchoPosts(req.anonymousIdentity.id, { page, limit });
+    res.json({ success: true, ...posts });
+  } catch (err) {
+    console.error('Error fetching personal Echoes:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve your published Echoes' });
+  }
+});
+
+/**
+ * Delete user's own published Echo
+ */
+app.delete('/api/my-echo/posts/:id', requireAnonymousAuth, async (req, res) => {
+  try {
+    const result = await deleteMyEchoPost(req.anonymousIdentity.id, req.params.id);
+    if (!result.success) {
+      if (result.notFound) return res.status(404).json(result);
+      if (result.unauthorized) return res.status(403).json(result);
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Error deleting personal Echo:', err);
+    res.status(500).json({ success: false, error: 'Failed to erase your Echo' });
+  }
+});
+
+/**
+ * Get user's bookmarked Echoes
+ */
+app.get('/api/my-echo/bookmarks', requireAnonymousAuth, async (req, res) => {
+  try {
+    const items = await getMyEchoBookmarks(req.anonymousIdentity.id);
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error('Error fetching personal bookmarks:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve saved Echoes' });
+  }
+});
+
+/**
+ * Save an Echo to bookmarks
+ */
+app.post('/api/my-echo/bookmarks', requireAnonymousAuth, async (req, res) => {
+  try {
+    const { echoId } = req.body || {};
+    if (!echoId) {
+      return res.status(400).json({ success: false, error: 'echoId is required' });
+    }
+    const result = await addMyEchoBookmark(req.anonymousIdentity.id, echoId);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Error saving bookmark:', err);
+    res.status(500).json({ success: false, error: 'Failed to save bookmark' });
+  }
+});
+
+/**
+ * Remove an Echo from bookmarks
+ */
+app.delete('/api/my-echo/bookmarks/:id', requireAnonymousAuth, async (req, res) => {
+  try {
+    const result = await removeMyEchoBookmark(req.anonymousIdentity.id, req.params.id);
+    res.json(result);
+  } catch (err) {
+    console.error('Error removing bookmark:', err);
+    res.status(500).json({ success: false, error: 'Failed to remove bookmark' });
+  }
+});
+
+/**
+ * Get reflections (comments) written by user
+ */
+app.get('/api/my-echo/comments', requireAnonymousAuth, async (req, res) => {
+  try {
+    const { page, limit } = req.query;
+    const comments = await getMyEchoComments(req.anonymousIdentity.id, { page, limit });
+    res.json({ success: true, ...comments });
+  } catch (err) {
+    console.error('Error fetching personal reflections:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve your reflections' });
+  }
+});
+
+/**
+ * Delete user's own reflection (comment)
+ */
+app.delete('/api/my-echo/comments/:id', requireAnonymousAuth, async (req, res) => {
+  try {
+    const result = await deleteMyEchoComment(req.anonymousIdentity.id, req.params.id);
+    if (!result.success) {
+      if (result.notFound) return res.status(404).json(result);
+      if (result.unauthorized) return res.status(403).json(result);
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Error deleting personal reflection:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete reflection' });
+  }
+});
+
+/**
+ * Get replies received on user's echoes or reflections
+ */
+app.get('/api/my-echo/replies', requireAnonymousAuth, async (req, res) => {
+  try {
+    const items = await getMyEchoReplies(req.anonymousIdentity.id);
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error('Error fetching personal replies:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve replies' });
+  }
+});
+
+/**
+ * Get notifications for identity
+ */
+app.get('/api/my-echo/notifications', requireAnonymousAuth, async (req, res) => {
+  try {
+    const notifs = await getMyEchoNotifications(req.anonymousIdentity.id);
+    res.json({ success: true, ...notifs });
+  } catch (err) {
+    console.error('Error fetching notifications:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve notifications' });
+  }
+});
+
+/**
+ * Mark notifications as read
+ */
+app.post('/api/my-echo/notifications/read', requireAnonymousAuth, async (req, res) => {
+  try {
+    const { notificationIds } = req.body || {};
+    const result = await markMyEchoNotificationsRead(req.anonymousIdentity.id, notificationIds);
+    res.json(result);
+  } catch (err) {
+    console.error('Error marking notifications read:', err);
+    res.status(500).json({ success: false, error: 'Failed to update notification state' });
   }
 });
 

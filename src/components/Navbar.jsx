@@ -6,7 +6,8 @@ import {
   Tv, 
   Menu, 
   X,
-  Smartphone
+  Smartphone,
+  User
 } from 'lucide-react';
 
 function Navbar({
@@ -18,6 +19,8 @@ function Navbar({
   onOpenMixer,
   onOpenZenCinema,
   onOpenRitual,
+  onOpenMyEcho,
+  unreadNotifs = 0,
   isAudioPlaying,
   sessionDuration,
   activeSouls = 0,
@@ -96,6 +99,23 @@ function Navbar({
               </button>
             )}
 
+            {/* My Echo Personal Anonymous Space */}
+            <button
+              type="button"
+              onClick={onOpenMyEcho}
+              className="minimal-icon-btn my-echo-hover"
+              title="My Echo — Your Personal Anonymous Space"
+              aria-label="My Echo"
+            >
+              <User size={17} className="text-amber-400" />
+              <span className="nav-my-echo-label nav-desktop-only">My Echo</span>
+              {unreadNotifs > 0 && (
+                <span className="my-echo-nav-badge" title={`${unreadNotifs} unread notifications`}>
+                  {unreadNotifs > 9 ? '9+' : unreadNotifs}
+                </span>
+              )}
+            </button>
+
             {/* New Echo Minimal CTA */}
             <button
               type="button"
@@ -137,6 +157,20 @@ function Navbar({
       {mobileMenuOpen && (
         <div className="minimal-mobile-drawer">
           <div className="mobile-interactive-links">
+            <button
+              onClick={() => {
+                onOpenMyEcho();
+                setMobileMenuOpen(false);
+              }}
+              className="mobile-feature-row mobile-my-echo-row"
+            >
+              <User size={16} className="text-amber-400" />
+              <span>My Echo (Personal Space)</span>
+              {unreadNotifs > 0 && (
+                <span className="mobile-unread-pill">{unreadNotifs} new</span>
+              )}
+            </button>
+
             <button
               onClick={() => {
                 onOpenZenCinema();

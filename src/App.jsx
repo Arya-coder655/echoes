@@ -20,9 +20,13 @@ import {
   addCommentInDb,
   sendSoulHeartbeat,
   fetchActiveSouls,
-  sendSoulLeave
+  sendSoulLeave,
+  syncAnonymousIdentityWithServer,
+  fetchMyEchoNotifications,
+  addMyEchoBookmark,
+  removeMyEchoBookmark
 } from './utils/api';
-import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown } from 'lucide-react';
+import { Sparkles, Heart, PlusCircle, ArrowUp, Flame, CloudRain, Tv, Info, ChevronDown, User } from 'lucide-react';
 
 // Code-split / Lazy-loaded Modals & Secondary Experiences (Loaded on-demand)
 const EchoComposer = lazy(() => import('./components/EchoComposer'));
@@ -36,6 +40,7 @@ const CatharsisRitualModal = lazy(() => import('./components/CatharsisRitualModa
 const ReportModal = lazy(() => import('./components/ReportModal'));
 const AdminDashboardModal = lazy(() => import('./components/AdminDashboardModal'));
 const InstallAppModal = lazy(() => import('./components/InstallAppModal'));
+const MyEchoModal = lazy(() => import('./components/MyEchoModal'));
 
 // Sanctuary Elegant Pure Black Circle Loader Fallback
 function SanctuaryModalFallback() {
@@ -111,6 +116,8 @@ export default function App() {
   const [ritualOpen, setRitualOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [reportEchoTarget, setReportEchoTarget] = useState(null);
+  const [myEchoOpen, setMyEchoOpen] = useState(false);
+  const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [activeSouls, setActiveSouls] = useState(null);
@@ -194,6 +201,29 @@ export default function App() {
       window.removeEventListener('focus', handleFocus);
     };
   }, [loadDatabaseEchoes]);
+
+  // Synchronize anonymous identity & notification counter
+  useEffect(() => {
+    let isMounted = true;
+    syncAnonymousIdentityWithServer().catch(() => {});
+
+    async function checkNotifications() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      try {
+        const res = await fetchMyEchoNotifications();
+        if (isMounted && res && typeof res.unreadCount === 'number') {
+          setUnreadNotifsCount(res.unreadCount);
+        }
+      } catch {}
+    }
+
+    checkNotifications();
+    const notifTimer = setInterval(checkNotifications, 40000);
+    return () => {
+      isMounted = false;
+      clearInterval(notifTimer);
+    };
+  }, []);
 
   // Synchronize Active Souls presence heartbeat & real-time counter
   useEffect(() => {
@@ -411,6 +441,11 @@ export default function App() {
       const exists = prev.includes(id);
       const next = exists ? prev.filter((bId) => bId !== id) : [...prev, id];
       showToast(exists ? 'Removed from saved echoes.' : 'Saved to your private collection.');
+      if (exists) {
+        removeMyEchoBookmark(id).catch(() => {});
+      } else {
+        addMyEchoBookmark(id).catch(() => {});
+      }
       return next;
     });
   }, [showToast]);
@@ -624,6 +659,8 @@ export default function App() {
         onOpenMixer={handleOpenMixer}
         onOpenZenCinema={handleOpenZenCinema}
         onOpenRitual={handleOpenRitual}
+        onOpenMyEcho={() => setMyEchoOpen(true)}
+        unreadNotifs={unreadNotifsCount}
         isAudioPlaying={isAudioPlaying}
         sessionDuration={sessionDuration}
         activeSouls={activeSouls}
@@ -750,17 +787,25 @@ export default function App() {
       <div className="mobile-bottom-bar">
         <button
           onClick={() => setActiveCategory('all')}
-          className={`mobile-tab-btn ${activeCategory === 'all' ? 'active' : ''}`}
+          className={`mobile-tab-btn ${activeCategory === 'all' && !myEchoOpen ? 'active' : ''}`}
         >
           <Sparkles size={18} />
           <span>Feed</span>
         </button>
         <button
-          onClick={handleOpenZenCinema}
-          className="mobile-tab-btn"
+          onClick={() => setMyEchoOpen(true)}
+          className={`mobile-tab-btn ${myEchoOpen ? 'active' : ''}`}
+          aria-label="My Echo"
         >
-          <Tv size={18} />
-          <span>Cinema</span>
+          <div style={{ position: 'relative', display: 'inline-flex' }}>
+            <User size={18} />
+            {unreadNotifsCount > 0 && (
+              <span className="my-echo-nav-badge" style={{ top: '-6px', right: '-8px' }}>
+                {unreadNotifsCount > 9 ? '9+' : unreadNotifsCount}
+              </span>
+            )}
+          </div>
+          <span>My Echo</span>
         </button>
         <button
           onClick={handleOpenComposer}
@@ -1033,6 +1078,37 @@ export default function App() {
             isIOS={isIOS}
             isInstalled={isInstalled}
             onTriggerInstall={triggerInstall}
+            onToast={showToast}
+          />
+        </Suspense>
+      )}
+
+      {/* My Echo Personal Anonymous Space */}
+      {myEchoOpen && (
+        <Suspense fallback={<SanctuaryModalFallback />}>
+          <MyEchoModal
+            isOpen={myEchoOpen}
+            onClose={() => {
+              setMyEchoOpen(false);
+              fetchMyEchoNotifications().then((res) => {
+                if (res && typeof res.unreadCount === 'number') setUnreadNotifsCount(res.unreadCount);
+              }).catch(() => {});
+            }}
+            onOpenComposer={handleOpenComposer}
+            onOpenComments={(targetEcho) => {
+              setCommentsEcho(targetEcho);
+            }}
+            onOpenShare={(targetEcho) => {
+              setShareEcho(targetEcho);
+            }}
+            onSelectEcho={(echoId) => {
+              const el = document.getElementById(echoId) || document.querySelector(`[data-id="${echoId}"]`);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else {
+                setSearchQuery(echoId);
+              }
+            }}
             onToast={showToast}
           />
         </Suspense>

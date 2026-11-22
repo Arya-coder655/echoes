@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import crypto from 'node:crypto';
 
 dotenv.config();
 
@@ -104,7 +105,74 @@ export async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // 8. Check if empty and seed initial sanctuary echoes
+    // 8. Create Anonymous Identities Table (My Echo)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS anonymous_identities (
+        id VARCHAR(64) PRIMARY KEY,
+        secret_hash VARCHAR(128) NOT NULL,
+        salt VARCHAR(32) NOT NULL,
+        created_at BIGINT NOT NULL,
+        last_seen BIGINT NOT NULL,
+        INDEX idx_identities_last_seen (last_seen)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 9. Schema migrations for echoes and comments tables (author_id & parent_id)
+    try {
+      const [echoCols] = await pool.query('DESCRIBE echoes');
+      if (!echoCols.some(c => c.Field === 'author_id')) {
+        await pool.query('ALTER TABLE echoes ADD COLUMN author_id VARCHAR(64) DEFAULT NULL');
+        await pool.query('ALTER TABLE echoes ADD INDEX idx_echoes_author (author_id)');
+      }
+    } catch (migrErr) {
+      console.warn('Echoes author_id migration notice:', migrErr.message);
+    }
+
+    try {
+      const [commCols] = await pool.query('DESCRIBE comments');
+      if (!commCols.some(c => c.Field === 'author_id')) {
+        await pool.query('ALTER TABLE comments ADD COLUMN author_id VARCHAR(64) DEFAULT NULL');
+        await pool.query('ALTER TABLE comments ADD INDEX idx_comments_author (author_id)');
+      }
+      if (!commCols.some(c => c.Field === 'parent_id')) {
+        await pool.query('ALTER TABLE comments ADD COLUMN parent_id VARCHAR(64) DEFAULT NULL');
+        await pool.query('ALTER TABLE comments ADD INDEX idx_comments_parent (parent_id)');
+      }
+    } catch (migrErr) {
+      console.warn('Comments columns migration notice:', migrErr.message);
+    }
+
+    // 10. Create Bookmarks Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS bookmarks (
+        id VARCHAR(64) PRIMARY KEY,
+        identity_id VARCHAR(64) NOT NULL,
+        echo_id VARCHAR(64) NOT NULL,
+        created_at BIGINT NOT NULL,
+        UNIQUE KEY uq_identity_echo (identity_id, echo_id),
+        INDEX idx_bookmarks_identity (identity_id),
+        INDEX idx_bookmarks_echo (echo_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 11. Create Notifications Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id VARCHAR(64) PRIMARY KEY,
+        recipient_id VARCHAR(64) NOT NULL,
+        actor_id VARCHAR(64) DEFAULT NULL,
+        type VARCHAR(32) NOT NULL,
+        echo_id VARCHAR(64) NOT NULL,
+        comment_id VARCHAR(64) DEFAULT NULL,
+        snippet TEXT,
+        is_read TINYINT(1) DEFAULT 0,
+        created_at BIGINT NOT NULL,
+        INDEX idx_notif_recipient (recipient_id, is_read),
+        INDEX idx_notif_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 12. Check if empty and seed initial sanctuary echoes
     const [rows] = await pool.query('SELECT COUNT(*) as count FROM echoes');
     if (rows[0].count === 0) {
       await seedInitialData();
@@ -396,8 +464,8 @@ export async function getEchoById(id) {
  */
 export async function createEcho(echo) {
   await pool.query(
-    `INSERT INTO echoes (id, name, category, message, image, likes, shares, themeId, timestamp, reported, report_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)`,
+    `INSERT INTO echoes (id, name, category, message, image, likes, shares, themeId, timestamp, reported, report_count, author_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
     [
       echo.id,
       echo.name || 'To: The Universe (Anonymous)',
@@ -407,7 +475,8 @@ export async function createEcho(echo) {
       echo.likes ?? 1,
       echo.shares ?? 0,
       echo.themeId || 'amber-nostalgia',
-      echo.timestamp || Date.now()
+      echo.timestamp || Date.now(),
+      echo.authorId || null
     ]
   );
 
@@ -442,18 +511,54 @@ export async function incrementShare(id) {
 }
 
 /**
- * Add a comment
+ * Add a comment / reflection
+ * Optionally associates comment with author_id and parent_id (threaded reply)
+ * and automatically triggers an anonymous notification for the echo author or parent comment author.
  */
-export async function addComment(echoId, text) {
+export async function addComment(echoId, text, authorId = null, parentId = null) {
   const commentId = `comm-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const time = Date.now();
 
   await pool.query(
-    'INSERT INTO comments (id, echo_id, text, timestamp) VALUES (?, ?, ?, ?)',
-    [commentId, echoId, text, time]
+    'INSERT INTO comments (id, echo_id, text, timestamp, author_id, parent_id) VALUES (?, ?, ?, ?, ?, ?)',
+    [commentId, echoId, text, time, authorId || null, parentId || null]
   );
 
-  return { id: commentId, text, time };
+  // Trigger notification for echo author
+  try {
+    const [echoRows] = await pool.query('SELECT author_id, name FROM echoes WHERE id = ?', [echoId]);
+    const echoAuthor = echoRows[0]?.author_id;
+    if (echoAuthor && echoAuthor !== authorId) {
+      await createNotification(
+        echoAuthor,
+        authorId,
+        'echo_reply',
+        echoId,
+        commentId,
+        text.slice(0, 120)
+      );
+    }
+
+    // If this is a reply to another comment
+    if (parentId) {
+      const [parentRows] = await pool.query('SELECT author_id FROM comments WHERE id = ?', [parentId]);
+      const parentAuthor = parentRows[0]?.author_id;
+      if (parentAuthor && parentAuthor !== authorId && parentAuthor !== echoAuthor) {
+        await createNotification(
+          parentAuthor,
+          authorId,
+          'comment_reply',
+          echoId,
+          commentId,
+          text.slice(0, 120)
+        );
+      }
+    }
+  } catch (notifErr) {
+    console.warn('Failed to queue reply notification:', notifErr.message);
+  }
+
+  return { id: commentId, text, time, authorId: authorId || null, parentId: parentId || null };
 }
 
 /**
@@ -788,6 +893,449 @@ export async function pruneExpiredSessions(retentionSeconds = 300) {
     console.warn('Could not prune expired sessions from MySQL:', err.message);
     return 0;
   }
+}
+
+// -------------------------------------------------------------
+// MY ECHO: Anonymous Identity, Dashboard & Notification Engine
+// -------------------------------------------------------------
+
+/**
+ * Register or verify an anonymous identity with secure salt + SHA-256 hash.
+ */
+export async function registerOrVerifyIdentity(identityId, identitySecret) {
+  if (!identityId || !identitySecret || typeof identityId !== 'string' || typeof identitySecret !== 'string') {
+    throw new Error('Invalid identity credentials');
+  }
+
+  const [existing] = await pool.query(
+    'SELECT id, secret_hash, salt, created_at, last_seen FROM anonymous_identities WHERE id = ?',
+    [identityId]
+  );
+
+  const now = Date.now();
+
+  if (existing && existing.length > 0) {
+    const record = existing[0];
+    const candidateHash = crypto.createHash('sha256').update(identitySecret + record.salt).digest('hex');
+    
+    // Timing-safe comparison to prevent timing attacks
+    const bufA = Buffer.from(candidateHash, 'utf8');
+    const bufB = Buffer.from(record.secret_hash, 'utf8');
+    if (bufA.length !== bufB.length || !crypto.timingSafeEqual(bufA, bufB)) {
+      return { success: false, error: 'Unauthorized: Invalid identity secret' };
+    }
+
+    await pool.query('UPDATE anonymous_identities SET last_seen = ? WHERE id = ?', [now, identityId]);
+    return { success: true, identityId, isNew: false, createdAt: Number(record.created_at) };
+  } else {
+    // Generate fresh salt and hash
+    const salt = crypto.randomBytes(16).toString('hex');
+    const secretHash = crypto.createHash('sha256').update(identitySecret + salt).digest('hex');
+
+    await pool.query(
+      'INSERT INTO anonymous_identities (id, secret_hash, salt, created_at, last_seen) VALUES (?, ?, ?, ?, ?)',
+      [identityId, secretHash, salt, now, now]
+    );
+
+    return { success: true, identityId, isNew: true, createdAt: now };
+  }
+}
+
+/**
+ * Verify identity credentials (boolean check for auth middleware)
+ */
+export async function verifyIdentityCredentials(identityId, identitySecret) {
+  if (!identityId || !identitySecret) return false;
+  try {
+    const [existing] = await pool.query(
+      'SELECT secret_hash, salt FROM anonymous_identities WHERE id = ?',
+      [identityId]
+    );
+    if (!existing || existing.length === 0) return false;
+    const record = existing[0];
+    const candidateHash = crypto.createHash('sha256').update(identitySecret + record.salt).digest('hex');
+    const bufA = Buffer.from(candidateHash, 'utf8');
+    const bufB = Buffer.from(record.secret_hash, 'utf8');
+    if (bufA.length !== bufB.length || !crypto.timingSafeEqual(bufA, bufB)) {
+      return false;
+    }
+    // Update last_seen asynchronously without blocking
+    pool.query('UPDATE anonymous_identities SET last_seen = ? WHERE id = ?', [Date.now(), identityId]).catch(() => {});
+    return true;
+  } catch (err) {
+    console.warn('Identity verification error:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Recover identity from a user-provided recovery key.
+ * Expected format: "ECHO-REC-" + base64(JSON.stringify({ id, secret }))
+ */
+export async function recoverIdentity(recoveryKey) {
+  if (!recoveryKey || typeof recoveryKey !== 'string') {
+    return { success: false, error: 'Recovery key cannot be empty' };
+  }
+  try {
+    let cleanKey = recoveryKey.trim();
+    if (cleanKey.startsWith('ECHO-REC-')) {
+      cleanKey = cleanKey.slice(9);
+    }
+    const decoded = Buffer.from(cleanKey, 'base64').toString('utf8');
+    const parsed = JSON.parse(decoded);
+    const { id, secret } = parsed || {};
+
+    if (!id || !secret) {
+      return { success: false, error: 'Malformed recovery key structure' };
+    }
+
+    const isValid = await verifyIdentityCredentials(id, secret);
+    if (!isValid) {
+      return { success: false, error: 'Invalid recovery credentials. Identity not found or secret does not match.' };
+    }
+
+    return { success: true, identityId: id, identitySecret: secret };
+  } catch (err) {
+    return { success: false, error: 'Failed to decode recovery key: ' + err.message };
+  }
+}
+
+/**
+ * Create a new notification for an anonymous user
+ */
+export async function createNotification(recipientId, actorId, type, echoId, commentId, snippet) {
+  if (!recipientId || recipientId === actorId) return null;
+  const id = `notif-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+  try {
+    await pool.query(
+      `INSERT INTO notifications (id, recipient_id, actor_id, type, echo_id, comment_id, snippet, is_read, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+      [id, recipientId, actorId || null, type, echoId, commentId || null, snippet || '', Date.now()]
+    );
+    return id;
+  } catch (err) {
+    console.warn('Failed to insert notification:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Get summary stats for My Echo dashboard
+ */
+export async function getMyEchoOverview(identityId) {
+  const [echoStats] = await pool.query(
+    'SELECT COUNT(*) as totalPosts FROM echoes WHERE author_id = ?',
+    [identityId]
+  );
+  const [bookmarkStats] = await pool.query(
+    'SELECT COUNT(*) as totalBookmarks FROM bookmarks WHERE identity_id = ?',
+    [identityId]
+  );
+  const [reflectionStats] = await pool.query(
+    'SELECT COUNT(*) as totalReflections FROM comments WHERE author_id = ?',
+    [identityId]
+  );
+  const [unreadNotifs] = await pool.query(
+    'SELECT COUNT(*) as unread FROM notifications WHERE recipient_id = ? AND is_read = 0',
+    [identityId]
+  );
+
+  return {
+    identityId,
+    totalPosts: Number(echoStats[0]?.totalPosts || 0),
+    totalBookmarks: Number(bookmarkStats[0]?.totalBookmarks || 0),
+    totalReflections: Number(reflectionStats[0]?.totalReflections || 0),
+    unreadNotifications: Number(unreadNotifs[0]?.unread || 0)
+  };
+}
+
+/**
+ * Get echoes authored by this identity with comments count and pagination
+ */
+export async function getMyEchoPosts(identityId, { page = 1, limit = 20 } = {}) {
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+  const offset = (pageNum - 1) * limitNum;
+
+  const [posts] = await pool.query(
+    `SELECT id, name, category, message, image, likes, shares, themeId, timestamp, reported, report_count
+     FROM echoes
+     WHERE author_id = ?
+     ORDER BY timestamp DESC
+     LIMIT ? OFFSET ?`,
+    [identityId, limitNum, offset]
+  );
+
+  const postIds = posts.map(p => p.id);
+  const commentsMap = {};
+  if (postIds.length > 0) {
+    const [comments] = await pool.query(
+      `SELECT id, echo_id, text, timestamp as time, parent_id
+       FROM comments
+       WHERE echo_id IN (?)
+       ORDER BY timestamp DESC`,
+      [postIds]
+    );
+    for (const c of comments) {
+      if (!commentsMap[c.echo_id]) commentsMap[c.echo_id] = [];
+      commentsMap[c.echo_id].push({
+        id: c.id,
+        echoId: c.echo_id,
+        text: c.text,
+        time: Number(c.time),
+        parentId: c.parent_id
+      });
+    }
+  }
+
+  const [totalRow] = await pool.query(
+    'SELECT COUNT(*) as total FROM echoes WHERE author_id = ?',
+    [identityId]
+  );
+  const total = Number(totalRow[0]?.total || 0);
+
+  return {
+    page: pageNum,
+    limit: limitNum,
+    total,
+    totalPages: Math.ceil(total / limitNum),
+    items: posts.map(p => ({
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      message: p.message,
+      image: p.image || '',
+      likes: p.likes || 0,
+      shares: p.shares || 0,
+      themeId: p.themeId,
+      timestamp: Number(p.timestamp),
+      reported: Boolean(p.reported),
+      reportCount: p.report_count || 0,
+      status: p.reported ? 'under_review' : 'active',
+      comments: commentsMap[p.id] || []
+    }))
+  };
+}
+
+/**
+ * Delete own echo (strictly authorized)
+ */
+export async function deleteMyEchoPost(identityId, echoId) {
+  const [existing] = await pool.query('SELECT author_id FROM echoes WHERE id = ?', [echoId]);
+  if (!existing || existing.length === 0) {
+    return { success: false, notFound: true, error: 'Echo not found' };
+  }
+  if (existing[0].author_id !== identityId) {
+    return { success: false, unauthorized: true, error: 'You are not the author of this Echo' };
+  }
+
+  // Delete cascaded bookmarks, comments, reports, notifications
+  await pool.query('DELETE FROM notifications WHERE echo_id = ?', [echoId]);
+  await pool.query('DELETE FROM bookmarks WHERE echo_id = ?', [echoId]);
+  await pool.query('DELETE FROM reports WHERE echo_id = ?', [echoId]);
+  await pool.query('DELETE FROM comments WHERE echo_id = ?', [echoId]);
+  await pool.query('DELETE FROM echoes WHERE id = ? AND author_id = ?', [echoId, identityId]);
+
+  return { success: true, id: echoId };
+}
+
+/**
+ * Get bookmarked echoes for this identity
+ */
+export async function getMyEchoBookmarks(identityId) {
+  const [rows] = await pool.query(
+    `SELECT e.id, e.name, e.category, e.message, e.image, e.likes, e.shares, e.themeId, e.timestamp, e.reported, b.created_at as savedAt
+     FROM bookmarks b
+     JOIN echoes e ON b.echo_id = e.id
+     WHERE b.identity_id = ? AND e.reported = 0
+     ORDER BY b.created_at DESC`,
+    [identityId]
+  );
+
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    category: r.category,
+    message: r.message,
+    image: r.image || '',
+    likes: r.likes || 0,
+    shares: r.shares || 0,
+    themeId: r.themeId,
+    timestamp: Number(r.timestamp),
+    savedAt: Number(r.savedAt)
+  }));
+}
+
+/**
+ * Add an echo to bookmarks
+ */
+export async function addMyEchoBookmark(identityId, echoId) {
+  const [echoCheck] = await pool.query('SELECT id FROM echoes WHERE id = ?', [echoId]);
+  if (!echoCheck || echoCheck.length === 0) {
+    return { success: false, error: 'Echo does not exist' };
+  }
+  const id = `bm-${identityId.slice(0, 8)}-${echoId}`;
+  await pool.query(
+    `INSERT INTO bookmarks (id, identity_id, echo_id, created_at)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE created_at = VALUES(created_at)`,
+    [id, identityId, echoId, Date.now()]
+  );
+  return { success: true, echoId };
+}
+
+/**
+ * Remove an echo from bookmarks
+ */
+export async function removeMyEchoBookmark(identityId, echoId) {
+  await pool.query(
+    'DELETE FROM bookmarks WHERE identity_id = ? AND echo_id = ?',
+    [identityId, echoId]
+  );
+  return { success: true, echoId };
+}
+
+/**
+ * Get reflections (comments) written by this identity
+ */
+export async function getMyEchoComments(identityId, { page = 1, limit = 50 } = {}) {
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+  const offset = (pageNum - 1) * limitNum;
+
+  const [comments] = await pool.query(
+    `SELECT c.id, c.echo_id, c.text, c.timestamp, c.parent_id,
+            e.name as echoRecipient, e.message as echoSnippet, e.category as echoCategory, e.themeId as echoThemeId
+     FROM comments c
+     LEFT JOIN echoes e ON c.echo_id = e.id
+     WHERE c.author_id = ?
+     ORDER BY c.timestamp DESC
+     LIMIT ? OFFSET ?`,
+    [identityId, limitNum, offset]
+  );
+
+  const [totalRow] = await pool.query('SELECT COUNT(*) as total FROM comments WHERE author_id = ?', [identityId]);
+
+  return {
+    page: pageNum,
+    limit: limitNum,
+    total: Number(totalRow[0]?.total || 0),
+    items: comments.map(c => ({
+      id: c.id,
+      echoId: c.echo_id,
+      text: c.text,
+      timestamp: Number(c.timestamp),
+      parentId: c.parent_id,
+      echoRecipient: c.echoRecipient || 'The Sanctuary',
+      echoSnippet: c.echoSnippet ? c.echoSnippet.slice(0, 100) : '',
+      echoCategory: c.echoCategory || 'all',
+      echoThemeId: c.echoThemeId || 'amber-nostalgia'
+    }))
+  };
+}
+
+/**
+ * Delete own reflection (comment)
+ */
+export async function deleteMyEchoComment(identityId, commentId) {
+  const [existing] = await pool.query('SELECT author_id FROM comments WHERE id = ?', [commentId]);
+  if (!existing || existing.length === 0) {
+    return { success: false, notFound: true, error: 'Comment not found' };
+  }
+  if (existing[0].author_id !== identityId) {
+    return { success: false, unauthorized: true, error: 'Unauthorized to delete this reflection' };
+  }
+  await pool.query('DELETE FROM comments WHERE id = ? AND author_id = ?', [commentId, identityId]);
+  return { success: true, id: commentId };
+}
+
+/**
+ * Get replies received on user's echoes or reflections
+ */
+export async function getMyEchoReplies(identityId) {
+  const [rows] = await pool.query(
+    `SELECT 
+       c.id as commentId,
+       c.echo_id as echoId,
+       c.text as replyText,
+       c.timestamp as replyTime,
+       c.parent_id as parentId,
+       e.name as echoRecipient,
+       e.message as echoSnippet,
+       e.category as echoCategory,
+       e.themeId as echoThemeId,
+       n.id as notificationId,
+       COALESCE(n.is_read, 0) as isRead
+     FROM comments c
+     JOIN echoes e ON c.echo_id = e.id
+     LEFT JOIN notifications n ON n.comment_id = c.id AND n.recipient_id = ?
+     WHERE (e.author_id = ? AND (c.author_id IS NULL OR c.author_id != ?))
+        OR (c.parent_id IN (SELECT id FROM comments WHERE author_id = ?) AND (c.author_id IS NULL OR c.author_id != ?))
+     ORDER BY c.timestamp DESC
+     LIMIT 50`,
+    [identityId, identityId, identityId, identityId, identityId]
+  );
+
+  return rows.map(r => ({
+    id: r.commentId,
+    echoId: r.echoId,
+    replyText: r.replyText,
+    replyTime: Number(r.replyTime),
+    parentId: r.parentId,
+    echoRecipient: r.echoRecipient || 'The Sanctuary',
+    echoSnippet: r.echoSnippet ? r.echoSnippet.slice(0, 100) : '',
+    echoCategory: r.echoCategory || 'all',
+    echoThemeId: r.echoThemeId || 'amber-nostalgia',
+    notificationId: r.notificationId || null,
+    isRead: Boolean(r.isRead)
+  }));
+}
+
+/**
+ * Get notifications for identity
+ */
+export async function getMyEchoNotifications(identityId) {
+  const [rows] = await pool.query(
+    `SELECT id, recipient_id, actor_id, type, echo_id, comment_id, snippet, is_read, created_at
+     FROM notifications
+     WHERE recipient_id = ?
+     ORDER BY created_at DESC
+     LIMIT 50`,
+    [identityId]
+  );
+
+  const unreadCount = rows.filter(r => !r.is_read).length;
+
+  return {
+    unreadCount,
+    items: rows.map(r => ({
+      id: r.id,
+      type: r.type,
+      echoId: r.echo_id,
+      commentId: r.comment_id,
+      snippet: r.snippet || '',
+      isRead: Boolean(r.is_read),
+      createdAt: Number(r.created_at)
+    }))
+  };
+}
+
+/**
+ * Mark notifications as read
+ */
+export async function markMyEchoNotificationsRead(identityId, notificationIds = null) {
+  if (Array.isArray(notificationIds) && notificationIds.length > 0) {
+    await pool.query(
+      'UPDATE notifications SET is_read = 1 WHERE recipient_id = ? AND id IN (?)',
+      [identityId, notificationIds]
+    );
+  } else {
+    await pool.query(
+      'UPDATE notifications SET is_read = 1 WHERE recipient_id = ? AND is_read = 0',
+      [identityId]
+    );
+  }
+  return { success: true };
 }
 
 

@@ -9,6 +9,77 @@ const API_BASE = (typeof window !== 'undefined' && window.location.hostname.incl
   ? `${RENDER_BACKEND_URL}/api`
   : '/api';
 
+// -------------------------------------------------------------
+// Anonymous Persistent Identity (My Echo)
+// Zero PII, cryptographically secure UUID + 256-bit secret key
+// -------------------------------------------------------------
+export const STORAGE_KEY_IDENTITY = 'echoes_anonymous_identity_v1';
+
+export function getAnonymousIdentity() {
+  if (typeof window === 'undefined') {
+    return { identityId: 'anon_ssr', identitySecret: 'anon_secret', createdAt: Date.now() };
+  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_IDENTITY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.identityId && parsed?.identitySecret) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not read anonymous identity:', e);
+  }
+
+  // Generate new cryptographic identity
+  let identityId;
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    identityId = `anon_${crypto.randomUUID()}`;
+  } else {
+    identityId = `anon_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+  }
+
+  let identitySecret;
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    identitySecret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  } else {
+    identitySecret = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  }
+
+  const identity = {
+    identityId,
+    identitySecret,
+    createdAt: Date.now()
+  };
+
+  try {
+    localStorage.setItem(STORAGE_KEY_IDENTITY, JSON.stringify(identity));
+  } catch (e) {
+    console.warn('Could not persist anonymous identity:', e);
+  }
+
+  return identity;
+}
+
+export function getAnonymousAuthHeaders() {
+  const { identityId, identitySecret } = getAnonymousIdentity();
+  return {
+    'x-echo-identity-id': identityId,
+    'x-echo-identity-secret': identitySecret
+  };
+}
+
+export function generateRecoveryKey(identityId, identitySecret) {
+  try {
+    const payload = JSON.stringify({ id: identityId, secret: identitySecret });
+    return `ECHO-REC-${btoa(payload)}`;
+  } catch {
+    return '';
+  }
+}
+
 export async function fetchEchoesFromDb(params = {}) {
   try {
     const query = new URLSearchParams();
@@ -28,9 +99,13 @@ export async function fetchEchoesFromDb(params = {}) {
 
 export async function createEchoInDb(echoData) {
   try {
+    const authHeaders = getAnonymousAuthHeaders();
     const res = await fetch(`${API_BASE}/echoes`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...authHeaders
+      },
       body: JSON.stringify(echoData)
     });
 
@@ -68,12 +143,16 @@ export async function recordShareInDb(id) {
   }
 }
 
-export async function addCommentInDb(id, text) {
+export async function addCommentInDb(id, text, parentId = null) {
   try {
+    const authHeaders = getAnonymousAuthHeaders();
     const res = await fetch(`${API_BASE}/echoes/${id}/comments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      headers: { 
+        'Content-Type': 'application/json',
+        ...authHeaders
+      },
+      body: JSON.stringify({ text, parentId })
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to add comment');
@@ -346,5 +425,196 @@ export function sendSoulLeave() {
       }).catch(() => {});
     }
   } catch {}
+}
+
+// -------------------------------------------------------------
+// MY ECHO: Client Dashboard Service Methods
+// Authenticated with anonymous headers, graceful offline fallback
+// -------------------------------------------------------------
+
+export async function syncAnonymousIdentityWithServer() {
+  try {
+    const { identityId, identitySecret } = getAnonymousIdentity();
+    const res = await fetch(`${API_BASE}/my-echo/identity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identityId, identitySecret })
+    });
+    if (!res.ok) return { success: false };
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function recoverAnonymousIdentity(recoveryKey) {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/identity/recover`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recoveryKey })
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.identityId && data.identitySecret) {
+      localStorage.setItem(STORAGE_KEY_IDENTITY, JSON.stringify({
+        identityId: data.identityId,
+        identitySecret: data.identitySecret,
+        createdAt: Date.now()
+      }));
+      return { success: true, identityId: data.identityId };
+    }
+    return { success: false, error: data.error || 'Failed to restore identity' };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export function resetAnonymousIdentity() {
+  try {
+    localStorage.removeItem(STORAGE_KEY_IDENTITY);
+  } catch {}
+  return getAnonymousIdentity();
+}
+
+export async function fetchMyEchoOverview() {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/overview`, {
+      headers: getAnonymousAuthHeaders()
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchMyEchoPosts(page = 1, limit = 20) {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/posts?page=${page}&limit=${limit}`, {
+      headers: getAnonymousAuthHeaders()
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message, items: [] };
+  }
+}
+
+export async function deleteMyEchoPost(id) {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/posts/${id}`, {
+      method: 'DELETE',
+      headers: getAnonymousAuthHeaders()
+    });
+    const data = await res.json();
+    return { success: res.ok, ...data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchMyEchoBookmarks() {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/bookmarks`, {
+      headers: getAnonymousAuthHeaders()
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message, items: [] };
+  }
+}
+
+export async function addMyEchoBookmark(echoId) {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/bookmarks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAnonymousAuthHeaders()
+      },
+      body: JSON.stringify({ echoId })
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function removeMyEchoBookmark(echoId) {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/bookmarks/${echoId}`, {
+      method: 'DELETE',
+      headers: getAnonymousAuthHeaders()
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchMyEchoComments(page = 1, limit = 50) {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/comments?page=${page}&limit=${limit}`, {
+      headers: getAnonymousAuthHeaders()
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message, items: [] };
+  }
+}
+
+export async function deleteMyEchoComment(id) {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/comments/${id}`, {
+      method: 'DELETE',
+      headers: getAnonymousAuthHeaders()
+    });
+    const data = await res.json();
+    return { success: res.ok, ...data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchMyEchoReplies() {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/replies`, {
+      headers: getAnonymousAuthHeaders()
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message, items: [] };
+  }
+}
+
+export async function fetchMyEchoNotifications() {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/notifications`, {
+      headers: getAnonymousAuthHeaders()
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message, unreadCount: 0, items: [] };
+  }
+}
+
+export async function markMyEchoNotificationsRead(notificationIds = null) {
+  try {
+    const res = await fetch(`${API_BASE}/my-echo/notifications/read`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAnonymousAuthHeaders()
+      },
+      body: JSON.stringify({ notificationIds })
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 }
 
