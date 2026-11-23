@@ -377,11 +377,13 @@ export default function App() {
     }
   }, [reportedIds]);
 
-  // Deep link handling (e.g. #ECHO-10829)
+  // Deep link handling (e.g. #ECHO-10829 or #echo-ECHO-10829?comment=comm-123)
   useEffect(() => {
     if (window.location.hash) {
-      const hashId = window.location.hash.replace('#', '');
-      const matched = echoes.find((e) => e.id.toLowerCase() === hashId.toLowerCase());
+      const rawHash = window.location.hash.replace(/^#/, '');
+      const [echoPart, queryPart] = rawHash.split('?');
+      const cleanEchoId = echoPart.replace(/^echo-/, '');
+      const matched = echoes.find((e) => e.id.toLowerCase() === cleanEchoId.toLowerCase());
       if (matched) {
         setTimeout(() => {
           const el = document.getElementById(matched.id);
@@ -389,6 +391,9 @@ export default function App() {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             el.classList.add('highlight-target');
             setTimeout(() => el.classList.remove('highlight-target'), 3000);
+          }
+          if (queryPart && queryPart.includes('comment=')) {
+            setCommentsEcho(matched);
           }
         }, 500);
       }
@@ -450,13 +455,18 @@ export default function App() {
     });
   }, [showToast]);
 
-  const handleAddComment = useCallback(async (id, text, parentId = null) => {
-    const res = await addCommentInDb(id, text, parentId);
+  const handleAddComment = useCallback(async (id, text, parentId = null, gifUrl = null, isWarmth = false) => {
+    const res = await addCommentInDb(id, text, parentId, gifUrl, isWarmth);
     const newComment = (res && res.data) || {
       id: `comm-${Date.now()}`,
+      echo_id: id,
       text,
       time: Date.now(),
-      parentId: parentId || null
+      parentId: parentId || null,
+      gifUrl: gifUrl || null,
+      isWarmth: Boolean(isWarmth),
+      candleCount: 0,
+      reactionsCount: 0
     };
 
     setEchoes((prev) =>
@@ -479,7 +489,13 @@ export default function App() {
       return prev;
     });
 
-    showToast(parentId ? 'Your reply to this stranger has been shared.' : 'Your reflection has been anonymously shared and saved.');
+    if (isWarmth) {
+      showToast('Your gentle warmth has been released to this stranger. ✨');
+    } else if (parentId) {
+      showToast('Your reply to this stranger has been shared.');
+    } else {
+      showToast('Your reflection has been anonymously shared and saved.');
+    }
     return { success: true, comment: newComment };
   }, [showToast]);
 
@@ -967,6 +983,7 @@ export default function App() {
             echo={commentsEcho}
             onClose={() => setCommentsEcho(null)}
             onAddComment={handleAddComment}
+            onToast={showToast}
           />
         </Suspense>
       )}

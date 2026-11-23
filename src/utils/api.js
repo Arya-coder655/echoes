@@ -143,7 +143,7 @@ export async function recordShareInDb(id) {
   }
 }
 
-export async function addCommentInDb(id, text, parentId = null) {
+export async function addCommentInDb(id, text, parentId = null, gifUrl = null, isWarmth = false) {
   try {
     const authHeaders = getAnonymousAuthHeaders();
     const res = await fetch(`${API_BASE}/echoes/${id}/comments`, {
@@ -152,7 +152,7 @@ export async function addCommentInDb(id, text, parentId = null) {
         'Content-Type': 'application/json',
         ...authHeaders
       },
-      body: JSON.stringify({ text, parentId })
+      body: JSON.stringify({ text, parentId, gifUrl, isWarmth })
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to add comment');
@@ -160,6 +160,92 @@ export async function addCommentInDb(id, text, parentId = null) {
   } catch (err) {
     console.warn('Failed adding comment to database:', err.message);
     return { error: err.message, success: false };
+  }
+}
+
+export async function fetchCommentsForEcho(id, sortBy = 'relevance') {
+  try {
+    const authHeaders = getAnonymousAuthHeaders();
+    const res = await fetch(`${API_BASE}/echoes/${id}/comments?sort=${encodeURIComponent(sortBy)}`, {
+      headers: { ...authHeaders }
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch comments');
+    return { data: json.data || [], success: true };
+  } catch (err) {
+    console.warn('Failed fetching comments:', err.message);
+    return { error: err.message, success: false, data: [] };
+  }
+}
+
+export async function toggleCommentReactionInDb(commentId, reactionType = 'heart') {
+  try {
+    const authHeaders = getAnonymousAuthHeaders();
+    const res = await fetch(`${API_BASE}/comments/${commentId}/reactions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders
+      },
+      body: JSON.stringify({ reactionType })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to toggle reaction');
+    return { data: json, success: true };
+  } catch (err) {
+    console.warn('Failed toggling reaction:', err.message);
+    return { error: err.message, success: false };
+  }
+}
+
+export async function toggleCommentCandleInDb(commentId) {
+  try {
+    const authHeaders = getAnonymousAuthHeaders();
+    const res = await fetch(`${API_BASE}/comments/${commentId}/candle`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders
+      }
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to toggle candle');
+    return { data: json, success: true };
+  } catch (err) {
+    console.warn('Failed toggling candle:', err.message);
+    return { error: err.message, success: false };
+  }
+}
+
+export async function reportCommentInDb(commentId, echoId, reason, details = '') {
+  try {
+    const authHeaders = getAnonymousAuthHeaders();
+    const res = await fetch(`${API_BASE}/comments/${commentId}/report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders
+      },
+      body: JSON.stringify({ echoId, reason, details })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to submit report');
+    return { success: true, message: json.message };
+  } catch (err) {
+    console.warn('Failed reporting comment:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function searchGifs(query = '') {
+  try {
+    const res = await fetch(`${API_BASE}/gifs/search?q=${encodeURIComponent(query)}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to search GIFs');
+    return { success: true, results: json.results || [] };
+  } catch (err) {
+    console.warn('Failed searching GIFs:', err.message);
+    return { success: false, results: [], error: err.message };
   }
 }
 
@@ -320,6 +406,57 @@ export async function deleteCommentAsAdmin(id, pin) {
       headers: {
         'x-admin-key': pin
       }
+    });
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, data: json, error: json?.error };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Fetch comments with report status
+ */
+export async function fetchAdminComments(pin, filter = 'all') {
+  try {
+    const res = await fetch(`${API_BASE}/admin/comments?filter=${encodeURIComponent(filter)}`, {
+      headers: { 'x-admin-key': pin }
+    });
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, comments: json.comments || [], error: json?.error };
+  } catch (err) {
+    return { ok: false, error: err.message, comments: [] };
+  }
+}
+
+/**
+ * Admin: Dismiss reports on a comment
+ */
+export async function dismissCommentReportsInDb(id, pin) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/comments/${id}/dismiss-reports`, {
+      method: 'POST',
+      headers: { 'x-admin-key': pin }
+    });
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, data: json, error: json?.error };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Admin: Toggle comment visibility (hide/unhide)
+ */
+export async function toggleCommentVisibilityInDb(id, isHidden, pin) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/comments/${id}/visibility`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-key': pin
+      },
+      body: JSON.stringify({ isHidden })
     });
     const json = await res.json().catch(() => ({}));
     return { ok: res.ok, data: json, error: json?.error };

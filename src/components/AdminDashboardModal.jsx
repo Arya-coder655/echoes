@@ -33,6 +33,8 @@ import {
   dismissReportAsAdmin,
   deleteEchoAsAdmin,
   deleteCommentAsAdmin,
+  dismissCommentReportsInDb,
+  toggleCommentVisibilityInDb,
   fetchHealthStatus
 } from '../utils/api';
 import { CATEGORIES } from '../data/initialEchoes';
@@ -295,6 +297,34 @@ export default function AdminDashboardModal({ isOpen, onClose, onToast, echoes =
       loadOverview(pin);
     } else {
       onToast?.('Reflection removed locally.');
+    }
+  };
+
+  // Moderation Action 5: Dismiss Comment Reports
+  const handleDismissCommentReports = async (commentId) => {
+    setActionInProgress(commentId);
+    const res = await dismissCommentReportsInDb(commentId, pin);
+    setActionInProgress(null);
+    if (res?.ok) {
+      recordActivity('dismiss_comment_reports', commentId, `Reports cleared on comment #${commentId}`);
+      onToast?.('Reports cleared for this reflection.');
+      loadOverview(pin);
+    } else {
+      onToast?.('Failed to clear reports.');
+    }
+  };
+
+  // Moderation Action 6: Toggle Comment Visibility
+  const handleToggleCommentVisibility = async (commentId, isHidden) => {
+    setActionInProgress(commentId);
+    const res = await toggleCommentVisibilityInDb(commentId, isHidden, pin);
+    setActionInProgress(null);
+    if (res?.ok) {
+      recordActivity('comment_visibility', commentId, `Visibility set to ${isHidden ? 'hidden' : 'visible'}`);
+      onToast?.(isHidden ? 'Reflection hidden from sanctuary.' : 'Reflection restored.');
+      loadOverview(pin);
+    } else {
+      onToast?.('Failed to update reflection visibility.');
     }
   };
 
@@ -1005,11 +1035,23 @@ export default function AdminDashboardModal({ isOpen, onClose, onToast, echoes =
                   ) : (
                     <div className="admin-cards-list">
                       {filteredComments.map((c) => (
-                        <div key={c.id} className="admin-comment-card">
+                        <div key={c.id} className={`admin-comment-card ${c.isReported ? 'border-rose-500/40 bg-rose-950/10' : ''}`}>
                           <div className="admin-comment-header">
-                            <span className="font-mono text-xs text-amber-300">
-                              On Whisper #{c.echoId} {c.echoName && `(${c.echoName})`}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs text-amber-300">
+                                On Whisper #{c.echoId} {c.echoName && `(${c.echoName})`}
+                              </span>
+                              {c.isReported && (
+                                <span className="admin-status-badge reported text-[10px] px-1.5 py-0.5">
+                                  ⚠️ Reported ({c.reportCount || 1})
+                                </span>
+                              )}
+                              {c.isHidden && (
+                                <span className="admin-status-badge text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-400">
+                                  Hidden
+                                </span>
+                              )}
+                            </div>
                             <span className="admin-timestamp text-xs opacity-60">
                               {c.timestamp ? new Date(c.timestamp).toLocaleString() : ''}
                             </span>
@@ -1025,7 +1067,35 @@ export default function AdminDashboardModal({ isOpen, onClose, onToast, echoes =
                             "{c.text}"
                           </div>
 
+                          {c.gifUrl && (
+                            <div className="mt-2">
+                              <img src={c.gifUrl} alt="Reflection GIF" className="max-h-28 rounded-md border border-white/10" />
+                            </div>
+                          )}
+
                           <div className="admin-comment-actions">
+                            {c.isReported && (
+                              <button
+                                type="button"
+                                onClick={() => handleDismissCommentReports(c.id)}
+                                className="admin-btn admin-btn-restore mini"
+                                disabled={actionInProgress === c.id}
+                              >
+                                <CheckCircle2 size={13} />
+                                <span>Dismiss Reports</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCommentVisibility(c.id, !c.isHidden)}
+                              className="admin-btn mini opacity-80 hover:opacity-100"
+                              disabled={actionInProgress === c.id}
+                            >
+                              <Eye size={13} />
+                              <span>{c.isHidden ? 'Restore' : 'Hide'}</span>
+                            </button>
+
                             {confirmDeleteId === c.id ? (
                               <div className="admin-confirm-group">
                                 <span className="admin-confirm-prompt">Remove this reflection?</span>

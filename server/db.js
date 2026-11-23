@@ -130,17 +130,76 @@ export async function initDatabase() {
 
     try {
       const [commCols] = await pool.query('DESCRIBE comments');
-      if (!commCols.some(c => c.Field === 'author_id')) {
+      const existingCols = new Set(commCols.map(c => c.Field));
+      if (!existingCols.has('author_id')) {
         await pool.query('ALTER TABLE comments ADD COLUMN author_id VARCHAR(64) DEFAULT NULL');
         await pool.query('ALTER TABLE comments ADD INDEX idx_comments_author (author_id)');
       }
-      if (!commCols.some(c => c.Field === 'parent_id')) {
+      if (!existingCols.has('parent_id')) {
         await pool.query('ALTER TABLE comments ADD COLUMN parent_id VARCHAR(64) DEFAULT NULL');
         await pool.query('ALTER TABLE comments ADD INDEX idx_comments_parent (parent_id)');
+      }
+      if (!existingCols.has('gif_url')) {
+        await pool.query('ALTER TABLE comments ADD COLUMN gif_url TEXT DEFAULT NULL');
+      }
+      if (!existingCols.has('candle_count')) {
+        await pool.query('ALTER TABLE comments ADD COLUMN candle_count INT DEFAULT 0');
+      }
+      if (!existingCols.has('is_reported')) {
+        await pool.query('ALTER TABLE comments ADD COLUMN is_reported TINYINT(1) DEFAULT 0');
+      }
+      if (!existingCols.has('report_count')) {
+        await pool.query('ALTER TABLE comments ADD COLUMN report_count INT DEFAULT 0');
+      }
+      if (!existingCols.has('is_hidden')) {
+        await pool.query('ALTER TABLE comments ADD COLUMN is_hidden TINYINT(1) DEFAULT 0');
+      }
+      if (!existingCols.has('is_warmth')) {
+        await pool.query('ALTER TABLE comments ADD COLUMN is_warmth TINYINT(1) DEFAULT 0');
       }
     } catch (migrErr) {
       console.warn('Comments columns migration notice:', migrErr.message);
     }
+
+    // 10. Create Comment Reactions, Candles, and Reports Tables
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comment_reactions (
+        id VARCHAR(64) PRIMARY KEY,
+        comment_id VARCHAR(64) NOT NULL,
+        identity_id VARCHAR(64) NOT NULL,
+        reaction_type VARCHAR(32) NOT NULL,
+        created_at BIGINT NOT NULL,
+        UNIQUE KEY uq_comment_identity (comment_id, identity_id),
+        INDEX idx_comm_rx_comment (comment_id),
+        INDEX idx_comm_rx_identity (identity_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comment_candles (
+        id VARCHAR(64) PRIMARY KEY,
+        comment_id VARCHAR(64) NOT NULL,
+        identity_id VARCHAR(64) NOT NULL,
+        created_at BIGINT NOT NULL,
+        UNIQUE KEY uq_comment_candle (comment_id, identity_id),
+        INDEX idx_comm_candle_comment (comment_id),
+        INDEX idx_comm_candle_identity (identity_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comment_reports (
+        id VARCHAR(64) PRIMARY KEY,
+        comment_id VARCHAR(64) NOT NULL,
+        echo_id VARCHAR(64) NOT NULL,
+        reporter_id VARCHAR(64) DEFAULT NULL,
+        reason VARCHAR(255) NOT NULL,
+        details TEXT,
+        created_at BIGINT NOT NULL,
+        INDEX idx_cr_comment (comment_id),
+        INDEX idx_cr_echo (echo_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
 
     // 10. Create Bookmarks Table
     await pool.query(`
@@ -403,15 +462,49 @@ export async function getAllEchoes({ category = 'all', search = '', sortBy = 'ne
 
   const [echoes] = await pool.query(sql, params);
 
-  // Fetch comments for all returned echoes
-  const [allComments] = await pool.query(
-    'SELECT id, echo_id, text, timestamp as time, parent_id as parentId FROM comments ORDER BY timestamp ASC'
-  );
+  // Fetch comments for all returned echoes (excluding hidden)
+  const [allComments] = await pool.query(`
+    SELECT 
+      c.id, c.echo_id, c.text, c.timestamp as time, c.parent_id as parentId,
+      c.gif_url as gifUrl, c.candle_count as candleCount, c.is_warmth as isWarmth,
+      c.author_id as authorId
+    FROM comments c
+    WHERE c.is_hidden = 0
+    ORDER BY c.timestamp ASC
+  `);
+
+  // Fetch reactions breakdown for all comments
+  const [reactionsRows] = await pool.query(`
+    SELECT comment_id, reaction_type, COUNT(*) as count
+    FROM comment_reactions
+    GROUP BY comment_id, reaction_type
+  `).catch(() => [[]]);
+
+  const reactionMap = {};
+  for (const r of reactionsRows) {
+    if (!reactionMap[r.comment_id]) reactionMap[r.comment_id] = { total: 0, breakdown: {} };
+    reactionMap[r.comment_id].breakdown[r.reaction_type] = Number(r.count);
+    reactionMap[r.comment_id].total += Number(r.count);
+  }
 
   const commentsMap = {};
   for (const c of allComments) {
     if (!commentsMap[c.echo_id]) commentsMap[c.echo_id] = [];
-    commentsMap[c.echo_id].push(c);
+    const rx = reactionMap[c.id] || { total: 0, breakdown: {} };
+    commentsMap[c.echo_id].push({
+      id: c.id,
+      echo_id: c.echo_id,
+      text: c.text,
+      time: Number(c.time),
+      parentId: c.parentId || null,
+      gifUrl: c.gifUrl || null,
+      candleCount: Number(c.candleCount || 0),
+      isWarmth: Boolean(c.isWarmth),
+      reactionsCount: rx.total,
+      reactionBreakdown: rx.breakdown,
+      userReaction: null,
+      userCandleLit: false
+    });
   }
 
   return echoes.map((row) => ({
@@ -438,10 +531,50 @@ export async function getEchoById(id) {
   if (!rows || rows.length === 0) return null;
   const row = rows[0];
 
-  const [comments] = await pool.query(
-    'SELECT id, echo_id, text, timestamp as time, parent_id as parentId FROM comments WHERE echo_id = ? ORDER BY timestamp ASC',
-    [id]
-  );
+  const [comments] = await pool.query(`
+    SELECT 
+      c.id, c.echo_id, c.text, c.timestamp as time, c.parent_id as parentId,
+      c.gif_url as gifUrl, c.candle_count as candleCount, c.is_warmth as isWarmth,
+      c.author_id as authorId
+    FROM comments c
+    WHERE c.echo_id = ? AND c.is_hidden = 0
+    ORDER BY c.timestamp ASC
+  `, [id]);
+
+  const commentIds = (comments || []).map(c => c.id);
+  let reactionMap = {};
+  if (commentIds.length > 0) {
+    const [reactionsRows] = await pool.query(`
+      SELECT comment_id, reaction_type, COUNT(*) as count
+      FROM comment_reactions
+      WHERE comment_id IN (?)
+      GROUP BY comment_id, reaction_type
+    `, [commentIds]).catch(() => [[]]);
+
+    for (const r of reactionsRows) {
+      if (!reactionMap[r.comment_id]) reactionMap[r.comment_id] = { total: 0, breakdown: {} };
+      reactionMap[r.comment_id].breakdown[r.reaction_type] = Number(r.count);
+      reactionMap[r.comment_id].total += Number(r.count);
+    }
+  }
+
+  const enrichedComments = (comments || []).map(c => {
+    const rx = reactionMap[c.id] || { total: 0, breakdown: {} };
+    return {
+      id: c.id,
+      echo_id: c.echo_id,
+      text: c.text,
+      time: Number(c.time),
+      parentId: c.parentId || null,
+      gifUrl: c.gifUrl || null,
+      candleCount: Number(c.candleCount || 0),
+      isWarmth: Boolean(c.isWarmth),
+      reactionsCount: rx.total,
+      reactionBreakdown: rx.breakdown,
+      userReaction: null,
+      userCandleLit: false
+    };
+  });
 
   return {
     id: row.id,
@@ -455,7 +588,7 @@ export async function getEchoById(id) {
     timestamp: Number(row.timestamp),
     reported: Boolean(row.reported),
     reportCount: row.report_count || 0,
-    comments: comments || []
+    comments: enrichedComments
   };
 }
 
@@ -512,16 +645,16 @@ export async function incrementShare(id) {
 
 /**
  * Add a comment / reflection
- * Optionally associates comment with author_id and parent_id (threaded reply)
+ * Optionally associates comment with author_id, parent_id (threaded reply), gif_url, and is_warmth
  * and automatically triggers an anonymous notification for the echo author or parent comment author.
  */
-export async function addComment(echoId, text, authorId = null, parentId = null) {
+export async function addComment(echoId, text, authorId = null, parentId = null, gifUrl = null, isWarmth = false) {
   const commentId = `comm-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const time = Date.now();
 
   await pool.query(
-    'INSERT INTO comments (id, echo_id, text, timestamp, author_id, parent_id) VALUES (?, ?, ?, ?, ?, ?)',
-    [commentId, echoId, text, time, authorId || null, parentId || null]
+    'INSERT INTO comments (id, echo_id, text, timestamp, author_id, parent_id, gif_url, is_warmth) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [commentId, echoId, text, time, authorId || null, parentId || null, gifUrl || null, isWarmth ? 1 : 0]
   );
 
   // Trigger notification for echo author
@@ -532,7 +665,7 @@ export async function addComment(echoId, text, authorId = null, parentId = null)
       await createNotification(
         echoAuthor,
         authorId,
-        'echo_reply',
+        isWarmth ? 'comment_warmth' : 'echo_reply',
         echoId,
         commentId,
         text.slice(0, 120)
@@ -558,7 +691,357 @@ export async function addComment(echoId, text, authorId = null, parentId = null)
     console.warn('Failed to queue reply notification:', notifErr.message);
   }
 
-  return { id: commentId, text, time, authorId: authorId || null, parentId: parentId || null };
+  return {
+    id: commentId,
+    echo_id: echoId,
+    text,
+    time,
+    authorId: authorId || null,
+    parentId: parentId || null,
+    gifUrl: gifUrl || null,
+    isWarmth: Boolean(isWarmth),
+    candleCount: 0,
+    reactionsCount: 0,
+    reactionBreakdown: {},
+    userReaction: null,
+    userCandleLit: false
+  };
+}
+
+/**
+ * Toggle an emotional reaction on a comment (Heart, Hug, Moved, Hope, Candle, Peace, Powerful, Gratitude)
+ * One reaction per anonymous identity per comment.
+ */
+export async function toggleCommentReaction(commentId, identityId, reactionType = 'heart') {
+  if (!commentId || !identityId) throw new Error('Missing comment ID or identity ID');
+  const validReactions = ['heart', 'hug', 'moved', 'hope', 'candle', 'peace', 'powerful', 'gratitude'];
+  const rx = validReactions.includes(reactionType) ? reactionType : 'heart';
+
+  const [existing] = await pool.query(
+    'SELECT id, reaction_type FROM comment_reactions WHERE comment_id = ? AND identity_id = ?',
+    [commentId, identityId]
+  );
+
+  let action = 'added';
+  let userReaction = rx;
+
+  if (existing.length > 0) {
+    const current = existing[0];
+    if (current.reaction_type === rx) {
+      // Toggle off / remove reaction
+      await pool.query('DELETE FROM comment_reactions WHERE id = ?', [current.id]);
+      action = 'removed';
+      userReaction = null;
+    } else {
+      // Change to new reaction
+      await pool.query(
+        'UPDATE comment_reactions SET reaction_type = ?, created_at = ? WHERE id = ?',
+        [rx, Date.now(), current.id]
+      );
+      action = 'changed';
+      userReaction = rx;
+    }
+  } else {
+    // Add new reaction
+    const newId = `crx-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    await pool.query(
+      'INSERT INTO comment_reactions (id, comment_id, identity_id, reaction_type, created_at) VALUES (?, ?, ?, ?, ?)',
+      [newId, commentId, identityId, rx, Date.now()]
+    );
+    action = 'added';
+    userReaction = rx;
+
+    // Trigger notification for comment author
+    try {
+      const [commRows] = await pool.query('SELECT author_id, echo_id, text FROM comments WHERE id = ?', [commentId]);
+      if (commRows.length > 0) {
+        const commAuthor = commRows[0].author_id;
+        const echoId = commRows[0].echo_id;
+        if (commAuthor && commAuthor !== identityId) {
+          const emojiMap = {
+            heart: '❤️',
+            hug: '🫂',
+            moved: '🥺',
+            hope: '✨',
+            candle: '🕯️',
+            peace: '🤍',
+            powerful: '🔥',
+            gratitude: '🙏'
+          };
+          await createNotification(
+            commAuthor,
+            identityId,
+            'comment_reaction',
+            echoId,
+            commentId,
+            `${emojiMap[rx] || rx} Stranger reacted to: "${(commRows[0].text || '').slice(0, 80)}"`
+          );
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Reaction notification failed:', notifErr.message);
+    }
+  }
+
+  // Calculate updated reaction breakdown
+  const [breakdownRows] = await pool.query(
+    'SELECT reaction_type, COUNT(*) as count FROM comment_reactions WHERE comment_id = ? GROUP BY reaction_type',
+    [commentId]
+  );
+  const breakdown = {};
+  let reactionsCount = 0;
+  for (const r of breakdownRows) {
+    breakdown[r.reaction_type] = Number(r.count);
+    reactionsCount += Number(r.count);
+  }
+
+  return {
+    success: true,
+    action,
+    userReaction,
+    reactionsCount,
+    breakdown
+  };
+}
+
+/**
+ * Toggle lighting a virtual candle for a comment
+ * One candle per anonymous identity per comment.
+ */
+export async function toggleCommentCandle(commentId, identityId) {
+  if (!commentId || !identityId) throw new Error('Missing comment ID or identity ID');
+
+  const [existing] = await pool.query(
+    'SELECT id FROM comment_candles WHERE comment_id = ? AND identity_id = ?',
+    [commentId, identityId]
+  );
+
+  let candleLit = false;
+  if (existing.length > 0) {
+    await pool.query('DELETE FROM comment_candles WHERE id = ?', [existing[0].id]);
+    await pool.query('UPDATE comments SET candle_count = GREATEST(0, candle_count - 1) WHERE id = ?', [commentId]);
+    candleLit = false;
+  } else {
+    const newId = `ccandle-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    await pool.query(
+      'INSERT INTO comment_candles (id, comment_id, identity_id, created_at) VALUES (?, ?, ?, ?)',
+      [newId, commentId, identityId, Date.now()]
+    );
+    await pool.query('UPDATE comments SET candle_count = candle_count + 1 WHERE id = ?', [commentId]);
+    candleLit = true;
+
+    // Trigger notification
+    try {
+      const [commRows] = await pool.query('SELECT author_id, echo_id, text FROM comments WHERE id = ?', [commentId]);
+      if (commRows.length > 0) {
+        const commAuthor = commRows[0].author_id;
+        const echoId = commRows[0].echo_id;
+        if (commAuthor && commAuthor !== identityId) {
+          await createNotification(
+            commAuthor,
+            identityId,
+            'comment_candle',
+            echoId,
+            commentId,
+            `Lit a candle 🕯️ for your words: "${(commRows[0].text || '').slice(0, 80)}"`
+          );
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Candle notification failed:', notifErr.message);
+    }
+  }
+
+  const [countRow] = await pool.query('SELECT candle_count FROM comments WHERE id = ?', [commentId]);
+  const candleCount = Number(countRow[0]?.candle_count || 0);
+
+  return {
+    success: true,
+    candleLit,
+    candleCount
+  };
+}
+
+/**
+ * Report an inappropriate reflection or reply
+ */
+export async function reportComment(commentId, echoId, reporterId, reason, details = '') {
+  if (!commentId || !reason) throw new Error('Comment ID and reason are required');
+  const reportId = `crep-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  await pool.query(
+    'INSERT INTO comment_reports (id, comment_id, echo_id, reporter_id, reason, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [reportId, commentId, echoId, reporterId || null, reason, details || '', Date.now()]
+  );
+
+  await pool.query('UPDATE comments SET report_count = report_count + 1, is_reported = 1 WHERE id = ?', [commentId]);
+
+  return { success: true, message: 'Thank you for protecting the sanctuary. This reflection is under gentle review.' };
+}
+
+/**
+ * Fetch comments for an echo with sorting and identity reaction states
+ */
+export async function getCommentsForEcho(echoId, sortBy = 'relevance', identityId = null) {
+  const [comments] = await pool.query(`
+    SELECT 
+      c.id, c.echo_id, c.text, c.timestamp as time, c.parent_id as parentId,
+      c.gif_url as gifUrl, c.candle_count as candleCount, c.is_warmth as isWarmth,
+      c.author_id as authorId
+    FROM comments c
+    WHERE c.echo_id = ? AND c.is_hidden = 0
+    ORDER BY c.timestamp ASC
+  `, [echoId]);
+
+  if (!comments || comments.length === 0) return [];
+
+  const commentIds = comments.map(c => c.id);
+
+  // Fetch reactions breakdown
+  const [reactionsRows] = await pool.query(`
+    SELECT comment_id, reaction_type, COUNT(*) as count
+    FROM comment_reactions
+    WHERE comment_id IN (?)
+    GROUP BY comment_id, reaction_type
+  `, [commentIds]).catch(() => [[]]);
+
+  const reactionMap = {};
+  for (const r of reactionsRows) {
+    if (!reactionMap[r.comment_id]) reactionMap[r.comment_id] = { total: 0, breakdown: {} };
+    reactionMap[r.comment_id].breakdown[r.reaction_type] = Number(r.count);
+    reactionMap[r.comment_id].total += Number(r.count);
+  }
+
+  // Fetch user reactions & candles if identityId provided
+  let userReactionsMap = {};
+  let userCandlesSet = new Set();
+  if (identityId) {
+    const [userReactions] = await pool.query(`
+      SELECT comment_id, reaction_type FROM comment_reactions WHERE identity_id = ? AND comment_id IN (?)
+    `, [identityId, commentIds]).catch(() => [[]]);
+    for (const ur of userReactions) {
+      userReactionsMap[ur.comment_id] = ur.reaction_type;
+    }
+
+    const [userCandles] = await pool.query(`
+      SELECT comment_id FROM comment_candles WHERE identity_id = ? AND comment_id IN (?)
+    `, [identityId, commentIds]).catch(() => [[]]);
+    for (const uc of userCandles) {
+      userCandlesSet.add(uc.comment_id);
+    }
+  }
+
+  const enriched = comments.map(c => {
+    const rx = reactionMap[c.id] || { total: 0, breakdown: {} };
+    return {
+      id: c.id,
+      echo_id: c.echo_id,
+      text: c.text,
+      time: Number(c.time),
+      parentId: c.parentId || null,
+      gifUrl: c.gifUrl || null,
+      isWarmth: Boolean(c.isWarmth),
+      candleCount: Number(c.candleCount || 0),
+      reactionsCount: rx.total,
+      reactionBreakdown: rx.breakdown,
+      userReaction: userReactionsMap[c.id] || null,
+      userCandleLit: userCandlesSet.has(c.id),
+      isOwn: identityId ? (c.authorId === identityId) : false
+    };
+  });
+
+  // Apply sorting
+  if (sortBy === 'newest') {
+    enriched.sort((a, b) => b.time - a.time);
+  } else if (sortBy === 'oldest') {
+    enriched.sort((a, b) => a.time - b.time);
+  } else if (sortBy === 'loved') {
+    enriched.sort((a, b) => (b.reactionsCount + b.candleCount) - (a.reactionsCount + a.candleCount) || b.time - a.time);
+  } else {
+    // 'relevance' (default)
+    enriched.sort((a, b) => {
+      const scoreA = (a.candleCount * 3) + (a.reactionsCount * 2) + (a.isWarmth ? 1 : 0);
+      const scoreB = (b.candleCount * 3) + (b.reactionsCount * 2) + (b.isWarmth ? 1 : 0);
+      return scoreB - scoreA || a.time - b.time;
+    });
+  }
+
+  return enriched;
+}
+
+/**
+ * Guardian Portal: Get comments with report details
+ */
+export async function getAdminCommentsWithReports(filter = 'all') {
+  let sql = `
+    SELECT c.id, c.echo_id, c.text, c.timestamp, c.author_id, c.parent_id,
+           c.gif_url, c.candle_count, c.is_reported, c.report_count, c.is_hidden, c.is_warmth,
+           e.message as echoSnippet, e.name as echoName
+    FROM comments c
+    LEFT JOIN echoes e ON c.echo_id = e.id
+  `;
+
+  if (filter === 'reported') {
+    sql += ' WHERE c.is_reported = 1 OR c.report_count > 0';
+  }
+
+  sql += ' ORDER BY c.timestamp DESC LIMIT 100';
+
+  const [comments] = await pool.query(sql);
+
+  const reportedIds = comments.filter(c => c.report_count > 0).map(c => c.id);
+  let reportsMap = {};
+  if (reportedIds.length > 0) {
+    const [reports] = await pool.query(
+      'SELECT id, comment_id, reason, details, created_at FROM comment_reports WHERE comment_id IN (?) ORDER BY created_at DESC',
+      [reportedIds]
+    );
+    for (const rep of reports) {
+      if (!reportsMap[rep.comment_id]) reportsMap[rep.comment_id] = [];
+      reportsMap[rep.comment_id].push({
+        id: rep.id,
+        reason: rep.reason,
+        details: rep.details,
+        createdAt: Number(rep.created_at)
+      });
+    }
+  }
+
+  return comments.map(c => ({
+    id: c.id,
+    echoId: c.echo_id,
+    echoSnippet: c.echoSnippet || '',
+    echoName: c.echoName || '',
+    text: c.text,
+    timestamp: Number(c.timestamp),
+    gifUrl: c.gif_url || null,
+    candleCount: Number(c.candle_count || 0),
+    isReported: Boolean(c.is_reported),
+    reportCount: Number(c.report_count || 0),
+    isHidden: Boolean(c.is_hidden),
+    isWarmth: Boolean(c.is_warmth),
+    parentId: c.parent_id || null,
+    reports: reportsMap[c.id] || []
+  }));
+}
+
+/**
+ * Guardian Portal: Dismiss comment reports
+ */
+export async function dismissCommentReports(commentId) {
+  await pool.query('UPDATE comments SET is_reported = 0, report_count = 0 WHERE id = ?', [commentId]);
+  await pool.query('DELETE FROM comment_reports WHERE comment_id = ?', [commentId]);
+  await logAdminAction('dismiss_comment_reports', commentId, `Reports cleared for reflection #${commentId}`);
+  return { success: true };
+}
+
+/**
+ * Guardian Portal: Toggle comment visibility (hide/unhide)
+ */
+export async function toggleCommentVisibility(commentId, isHidden) {
+  await pool.query('UPDATE comments SET is_hidden = ? WHERE id = ?', [isHidden ? 1 : 0, commentId]);
+  await logAdminAction('comment_visibility', commentId, `Reflection #${commentId} ${isHidden ? 'hidden' : 'restored'}`);
+  return { success: true, isHidden: Boolean(isHidden) };
 }
 
 /**
@@ -678,9 +1161,9 @@ export async function getAdminOverview() {
     report_count: Number(row.report_count || 0)
   }));
 
-  // Fetch recent 50 comments with echo snippet
+  // Fetch recent 50 comments with echo snippet and report status
   const [recentComments] = await pool.query(`
-    SELECT c.id, c.echo_id, c.text, c.timestamp, e.message as echoSnippet, e.name as echoName
+    SELECT c.id, c.echo_id, c.text, c.timestamp, c.gif_url, c.candle_count, c.is_reported, c.report_count, c.is_hidden, c.is_warmth, e.message as echoSnippet, e.name as echoName
     FROM comments c
     LEFT JOIN echoes e ON c.echo_id = e.id
     ORDER BY c.timestamp DESC
@@ -729,6 +1212,12 @@ export async function getAdminOverview() {
       echoId: c.echo_id,
       text: c.text,
       timestamp: Number(c.timestamp),
+      gifUrl: c.gif_url || null,
+      candleCount: Number(c.candle_count || 0),
+      isReported: Boolean(c.is_reported),
+      reportCount: Number(c.report_count || 0),
+      isHidden: Boolean(c.is_hidden),
+      isWarmth: Boolean(c.is_warmth),
       echoSnippet: c.echoSnippet || '',
       echoName: c.echoName || ''
     })),
@@ -807,17 +1296,23 @@ export async function dismissReport(echoId) {
  * Admin: Permanently delete an echo (cascades to comments and reports)
  */
 export async function deleteEchoPermanently(echoId) {
+  await pool.query('DELETE FROM comment_reports WHERE echo_id = ?', [echoId]).catch(() => {});
+  await pool.query('DELETE FROM comment_reactions WHERE comment_id IN (SELECT id FROM comments WHERE echo_id = ?)', [echoId]).catch(() => {});
+  await pool.query('DELETE FROM comment_candles WHERE comment_id IN (SELECT id FROM comments WHERE echo_id = ?)', [echoId]).catch(() => {});
   await pool.query('DELETE FROM echoes WHERE id = ?', [echoId]);
   await logAdminAction('delete_echo', echoId, `Whisper #${echoId} permanently erased`);
   return { success: true, id: echoId };
 }
 
 /**
- * Admin: Permanently delete a comment
+ * Admin: Permanently delete a comment and cascade clean reactions, candles, and reports
  */
 export async function deleteCommentPermanently(commentId) {
+  await pool.query('DELETE FROM comment_reactions WHERE comment_id = ?', [commentId]).catch(() => {});
+  await pool.query('DELETE FROM comment_candles WHERE comment_id = ?', [commentId]).catch(() => {});
+  await pool.query('DELETE FROM comment_reports WHERE comment_id = ?', [commentId]).catch(() => {});
   await pool.query('DELETE FROM comments WHERE id = ?', [commentId]);
-  await logAdminAction('delete_comment', commentId, `Comment #${commentId} removed`);
+  await logAdminAction('delete_comment', commentId, `Reflection #${commentId} removed`);
   return { success: true, id: commentId };
 }
 
@@ -1129,10 +1624,13 @@ export async function deleteMyEchoPost(identityId, echoId) {
     return { success: false, unauthorized: true, error: 'You are not the author of this Echo' };
   }
 
-  // Delete cascaded bookmarks, comments, reports, notifications
+  // Delete cascaded bookmarks, comments, reports, notifications, comment reactions & candles
   await pool.query('DELETE FROM notifications WHERE echo_id = ?', [echoId]);
   await pool.query('DELETE FROM bookmarks WHERE echo_id = ?', [echoId]);
   await pool.query('DELETE FROM reports WHERE echo_id = ?', [echoId]);
+  await pool.query('DELETE FROM comment_reports WHERE echo_id = ?', [echoId]).catch(() => {});
+  await pool.query('DELETE FROM comment_reactions WHERE comment_id IN (SELECT id FROM comments WHERE echo_id = ?)', [echoId]).catch(() => {});
+  await pool.query('DELETE FROM comment_candles WHERE comment_id IN (SELECT id FROM comments WHERE echo_id = ?)', [echoId]).catch(() => {});
   await pool.query('DELETE FROM comments WHERE echo_id = ?', [echoId]);
   await pool.query('DELETE FROM echoes WHERE id = ? AND author_id = ?', [echoId, identityId]);
 
@@ -1245,6 +1743,9 @@ export async function deleteMyEchoComment(identityId, commentId) {
   if (existing[0].author_id !== identityId) {
     return { success: false, unauthorized: true, error: 'Unauthorized to delete this reflection' };
   }
+  await pool.query('DELETE FROM comment_reactions WHERE comment_id = ?', [commentId]).catch(() => {});
+  await pool.query('DELETE FROM comment_candles WHERE comment_id = ?', [commentId]).catch(() => {});
+  await pool.query('DELETE FROM comment_reports WHERE comment_id = ?', [commentId]).catch(() => {});
   await pool.query('DELETE FROM comments WHERE id = ? AND author_id = ?', [commentId, identityId]);
   return { success: true, id: commentId };
 }

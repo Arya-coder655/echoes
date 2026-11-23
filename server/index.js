@@ -39,7 +39,14 @@ import {
   deleteMyEchoComment,
   getMyEchoReplies,
   getMyEchoNotifications,
-  markMyEchoNotificationsRead
+  markMyEchoNotificationsRead,
+  toggleCommentReaction,
+  toggleCommentCandle,
+  reportComment,
+  getCommentsForEcho,
+  getAdminCommentsWithReports,
+  dismissCommentReports,
+  toggleCommentVisibility
 } from './db.js';
 import {
   whisperRateLimiter,
@@ -426,17 +433,43 @@ app.post('/api/echoes/:id/share', async (req, res) => {
 });
 
 /**
+ * Get comments for an echo with sorting and reaction counts
+ */
+app.get('/api/echoes/:id/comments', async (req, res) => {
+  try {
+    const echoId = req.params.id;
+    const sortBy = req.query.sort || 'relevance';
+
+    let identityId = null;
+    const headerId = req.headers['x-echo-identity-id'];
+    const headerSecret = req.headers['x-echo-identity-secret'];
+    if (headerId && headerSecret) {
+      const isValid = await verifyIdentityCredentials(headerId.toString().trim(), headerSecret.toString().trim());
+      if (isValid) identityId = headerId.toString().trim();
+    }
+
+    const comments = await getCommentsForEcho(echoId, sortBy, identityId);
+    res.json({ success: true, data: comments });
+  } catch (err) {
+    console.error('Error fetching comments for echo:', err);
+    res.status(500).json({ error: 'Failed to retrieve reflections.' });
+  }
+});
+
+/**
  * Add a comment / reflection (with rate limiter)
- * Automatically associates with anonymous identity and parent comment if provided
+ * Supports text, parentId, gifUrl, and isWarmth
  */
 app.post('/api/echoes/:id/comments', commentRateLimiter, async (req, res) => {
   try {
-    const { text, parentId } = req.body;
-    if (!text || !text.trim()) {
-      return res.status(400).json({ error: 'Reflection comment cannot be empty.' });
+    const { text = '', parentId = null, gifUrl = null, isWarmth = false } = req.body || {};
+    const trimmedText = typeof text === 'string' ? text.trim() : '';
+
+    if (!trimmedText && !gifUrl) {
+      return res.status(400).json({ error: 'Reflection comment or visual message cannot be empty.' });
     }
 
-    if (text.trim().length > 1000) {
+    if (trimmedText.length > 1000) {
       return res.status(400).json({ error: 'Comment exceeds 1,000 characters.' });
     }
 
@@ -450,12 +483,148 @@ app.post('/api/echoes/:id/comments', commentRateLimiter, async (req, res) => {
       }
     }
 
-    const comment = await addComment(req.params.id, text.trim(), authorId, parentId || null);
+    const comment = await addComment(
+      req.params.id,
+      trimmedText,
+      authorId,
+      parentId || null,
+      gifUrl || null,
+      Boolean(isWarmth)
+    );
     res.status(201).json(comment);
   } catch (err) {
     console.error('Error adding comment:', err);
     res.status(500).json({ error: 'Failed to record reflection.' });
   }
+});
+
+/**
+ * Toggle emotional reaction on a comment (Heart, Hug, Moved, Hope, Candle, Peace, Powerful, Gratitude)
+ */
+app.post('/api/comments/:id/reactions', async (req, res) => {
+  try {
+    const commentId = req.params.id;
+    const { reactionType = 'heart' } = req.body || {};
+
+    const identityId = req.headers['x-echo-identity-id'];
+    const identitySecret = req.headers['x-echo-identity-secret'];
+
+    if (!identityId || !identitySecret) {
+      return res.status(401).json({ error: 'Anonymous identity credentials required to react.' });
+    }
+
+    const isValid = await verifyIdentityCredentials(identityId.toString().trim(), identitySecret.toString().trim());
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid anonymous identity secret.' });
+    }
+
+    const result = await toggleCommentReaction(commentId, identityId.toString().trim(), reactionType);
+    res.json(result);
+  } catch (err) {
+    console.error('Error toggling comment reaction:', err);
+    res.status(500).json({ error: 'Failed to record reaction.' });
+  }
+});
+
+/**
+ * Toggle lighting a virtual candle on a comment
+ */
+app.post('/api/comments/:id/candle', async (req, res) => {
+  try {
+    const commentId = req.params.id;
+    const identityId = req.headers['x-echo-identity-id'];
+    const identitySecret = req.headers['x-echo-identity-secret'];
+
+    if (!identityId || !identitySecret) {
+      return res.status(401).json({ error: 'Anonymous identity credentials required to light a candle.' });
+    }
+
+    const isValid = await verifyIdentityCredentials(identityId.toString().trim(), identitySecret.toString().trim());
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid anonymous identity secret.' });
+    }
+
+    const result = await toggleCommentCandle(commentId, identityId.toString().trim());
+    res.json(result);
+  } catch (err) {
+    console.error('Error toggling comment candle:', err);
+    res.status(500).json({ error: 'Failed to light candle.' });
+  }
+});
+
+/**
+ * Report an inappropriate reflection / reply
+ */
+app.post('/api/comments/:id/report', async (req, res) => {
+  try {
+    const commentId = req.params.id;
+    const { echoId, reason, details = '' } = req.body || {};
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Please choose a reason for reporting this reflection.' });
+    }
+
+    let reporterId = null;
+    const identityId = req.headers['x-echo-identity-id'];
+    const identitySecret = req.headers['x-echo-identity-secret'];
+    if (identityId && identitySecret) {
+      const isValid = await verifyIdentityCredentials(identityId.toString().trim(), identitySecret.toString().trim());
+      if (isValid) reporterId = identityId.toString().trim();
+    }
+
+    const result = await reportComment(commentId, echoId, reporterId, reason.trim(), details.trim());
+    res.json(result);
+  } catch (err) {
+    console.error('Error reporting comment:', err);
+    res.status(500).json({ error: 'Failed to submit report.' });
+  }
+});
+
+/**
+ * Curated & safe GIF Search API (Tenor integration with fallback)
+ */
+const CURATED_EMOTION_GIFS = [
+  { id: 'gif-hug-1', title: 'Warm Hug', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZhcW13NXl6YmtvdXNveHprcXB3NmtyeGRjZ2phYTY3OHJ5eDltNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/od5H3PmEG5EVq/giphy.gif', preview: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZhcW13NXl6YmtvdXNveHprcXB3NmtyeGRjZ2phYTY3OHJ5eDltNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/od5H3PmEG5EVq/200.gif', tags: ['hug', 'comfort', 'support'] },
+  { id: 'gif-heart-1', title: 'Glowing Heart', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMjM2NXE5ZmVrNDQ3ZHFhYndwbTFlYjVrdDNuOTFndmR4dm90cmYxYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/M90mJvfWfd5mbUuULX/giphy.gif', preview: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMjM2NXE5ZmVrNDQ3ZHFhYndwbTFlYjVrdDNuOTFndmR4dm90cmYxYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/M90mJvfWfd5mbUuULX/200.gif', tags: ['heart', 'love', 'glow'] },
+  { id: 'gif-candle-1', title: 'Gentle Candle Light', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNmNqaTZqc3V2bXk5bHF5aWZ3ejl6eTN5Y2pvN3FodXN5MmZ2czQ5ZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o6Zt481isNVuQI1l6/giphy.gif', preview: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNmNqaTZqc3V2bXk5bHF5aWZ3ejl6eTN5Y2pvN3FodXN5MmZ2czQ5ZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o6Zt481isNVuQI1l6/200.gif', tags: ['candle', 'peace', 'warmth', 'light'] },
+  { id: 'gif-rain-1', title: 'Rain on Window', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3B5ajl4YTF6eWNvb2E1dXF2YW55ZTFva2pxcnZoaDV4cXF5eGtpMCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/t7Qb8655Z1V9u/giphy.gif', preview: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3B5ajl4YTF6eWNvb2E1dXF2YW55ZTFva2pxcnZoaDV4cXF5eGtpMCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/t7Qb8655Z1V9u/200.gif', tags: ['rain', 'calm', 'peace', 'night'] },
+  { id: 'gif-stars-1', title: 'Sparkling Night Sky', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWVsbTJ3bW5qN2M0Ympjc2N5cm95MmV4dXJ5Y3ZpOWs3NmtxeXp0cCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oKIPnAiaMCws8nOsE/giphy.gif', preview: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWVsbTJ3bW5qN2M0Ympjc2N5cm95MmV4dXJ5Y3ZpOWs3NmtxeXp0cCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oKIPnAiaMCws8nOsE/200.gif', tags: ['hope', 'stars', 'universe', 'healing'] },
+  { id: 'gif-comfort-1', title: 'Gentle Support', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnFkcnZmdnpoaWJ0Y2tzNHpsdGZ5dnAyc3pobHRvN3p2bXN2NGM3MyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/EvYHHSntaIl5m/giphy.gif', preview: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnFkcnZmdnpoaWJ0Y2tzNHpsdGZ5dnAyc3pobHRvN3p2bXN2NGM3MyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/EvYHHSntaIl5m/200.gif', tags: ['hug', 'comfort', 'friend'] }
+];
+
+app.get('/api/gifs/search', async (req, res) => {
+  const query = (req.query.q || '').toString().trim().toLowerCase();
+  const tenorKey = process.env.TENOR_API_KEY;
+
+  if (tenorKey && query) {
+    try {
+      const tenorUrl = `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${tenorKey}&client_key=echoes&limit=24&media_filter=tinygif,gif&contentfilter=high`;
+      const tenorRes = await fetch(tenorUrl, { signal: AbortSignal.timeout(4000) });
+      if (tenorRes.ok) {
+        const data = await tenorRes.json();
+        const results = (data.results || []).map(r => ({
+          id: r.id,
+          title: r.content_description || 'Emotion GIF',
+          preview: r.media_formats?.tinygif?.url || r.media_formats?.gif?.url,
+          url: r.media_formats?.gif?.url || r.media_formats?.tinygif?.url
+        }));
+        return res.json({ success: true, results, source: 'tenor' });
+      }
+    } catch (tenorErr) {
+      console.warn('Tenor API lookup failed, falling back to curated:', tenorErr.message);
+    }
+  }
+
+  // Filter curated collection
+  let matched = CURATED_EMOTION_GIFS;
+  if (query) {
+    const qWords = query.split(/\s+/);
+    matched = CURATED_EMOTION_GIFS.filter(g =>
+      qWords.some(w => g.title.toLowerCase().includes(w) || g.tags.some(t => t.includes(w)))
+    );
+    if (matched.length === 0) matched = CURATED_EMOTION_GIFS;
+  }
+
+  res.json({ success: true, results: matched, source: 'curated' });
 });
 
 /**
@@ -826,6 +995,47 @@ app.delete('/api/admin/echoes/:id', requireAdminAuth, async (req, res) => {
   } catch (err) {
     console.error('Error deleting echo:', err);
     res.status(500).json({ error: 'Failed to delete echo.' });
+  }
+});
+
+/**
+ * Admin: List comments with moderation & report details
+ */
+app.get('/api/admin/comments', requireAdminAuth, async (req, res) => {
+  try {
+    const filter = req.query.filter || 'all';
+    const comments = await getAdminCommentsWithReports(filter);
+    res.json({ success: true, comments });
+  } catch (err) {
+    console.error('Error fetching admin comments:', err);
+    res.status(500).json({ error: 'Failed to retrieve comments for moderation.' });
+  }
+});
+
+/**
+ * Admin: Dismiss reports on a comment
+ */
+app.post('/api/admin/comments/:id/dismiss-reports', requireAdminAuth, async (req, res) => {
+  try {
+    const result = await dismissCommentReports(req.params.id);
+    res.json({ success: true, message: 'Reports dismissed', result });
+  } catch (err) {
+    console.error('Error dismissing comment reports:', err);
+    res.status(500).json({ error: 'Failed to dismiss reports.' });
+  }
+});
+
+/**
+ * Admin: Toggle comment visibility (hide/unhide)
+ */
+app.patch('/api/admin/comments/:id/visibility', requireAdminAuth, async (req, res) => {
+  try {
+    const isHidden = Boolean(req.body.isHidden);
+    const result = await toggleCommentVisibility(req.params.id, isHidden);
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error('Error toggling comment visibility:', err);
+    res.status(500).json({ error: 'Failed to update reflection visibility.' });
   }
 });
 
