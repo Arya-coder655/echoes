@@ -3,7 +3,6 @@ import {
   initDatabase,
   addComment,
   toggleCommentReaction,
-  toggleCommentCandle,
   reportComment,
   getCommentsForEcho,
   getAdminCommentsWithReports,
@@ -70,21 +69,13 @@ async function run() {
   assert.strictEqual(rx2.breakdown.hug, undefined);
   console.log('✓ Changed reaction from hug to heart');
 
-  // 6. Test Candle - User B lights candle for c1
-  const candle1 = await toggleCommentCandle(c1.id, userB.id);
-  assert.strictEqual(candle1.candleLit, true, 'Candle should be lit');
-  assert.strictEqual(candle1.candleCount, 1, 'Candle count should be 1');
-  console.log('✓ Lit candle on comment');
-
   // 7. Test getCommentsForEcho
   const comments = await getCommentsForEcho(echoId, 'relevance', userB.id);
   assert.strictEqual(comments.length, 2, 'Should return 2 comments');
   const enrichedC1 = comments.find(c => c.id === c1.id);
   assert.strictEqual(enrichedC1.userReaction, 'heart', 'User B reaction should be detected');
-  assert.strictEqual(enrichedC1.userCandleLit, true, 'User B candle should be detected');
   assert.strictEqual(enrichedC1.reactionsCount, 1);
-  assert.strictEqual(enrichedC1.candleCount, 1);
-  console.log('✓ getCommentsForEcho returned enriched reaction & candle data');
+  console.log('✓ getCommentsForEcho returned enriched reaction data');
 
   // 8. Test reporting comment
   const rep = await reportComment(c2.id, echoId, userA.id, 'Inappropriate or offensive content', 'Testing report');

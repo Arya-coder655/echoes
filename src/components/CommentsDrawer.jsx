@@ -15,7 +15,9 @@ import {
   Flag,
   Flame,
   ArrowLeft,
-  Loader2
+  Loader2,
+  MoreHorizontal,
+  Trash2
 } from 'lucide-react';
 import EmojiGifPicker from './EmojiGifPicker';
 import CommentShareModal from './CommentShareModal';
@@ -23,9 +25,10 @@ import CommentReportModal from './CommentReportModal';
 import {
   addCommentInDb,
   toggleCommentReactionInDb,
-  toggleCommentCandleInDb,
+  deleteCommentInDb,
   reportCommentInDb,
-  fetchCommentsForEcho
+  fetchCommentsForEcho,
+  getAnonymousIdentity
 } from '../utils/api';
 
 export const EMOTIONAL_REACTIONS = [
@@ -33,7 +36,6 @@ export const EMOTIONAL_REACTIONS = [
   { id: 'hug', emoji: '🫂', label: 'Hug', desc: 'Sending comfort' },
   { id: 'moved', emoji: '🥺', label: 'Moved', desc: 'I felt this' },
   { id: 'hope', emoji: '✨', label: 'Hope', desc: 'I wish you healing' },
-  { id: 'candle', emoji: '🕯️', label: 'Candle', desc: "I'm here for you" },
   { id: 'peace', emoji: '🤍', label: 'Peace', desc: 'Sending warmth' },
   { id: 'powerful', emoji: '🔥', label: 'Powerful', desc: 'These words matter' },
   { id: 'gratitude', emoji: '🙏', label: 'Gratitude', desc: 'Thank you for sharing' }
@@ -79,10 +81,11 @@ function buildCommentTree(comments) {
     parentId: c.parentId || c.parent_id || null,
     reactionsCount: Number(c.reactionsCount || c.likes || 0),
     reactionBreakdown: c.reactionBreakdown || {},
-    candleCount: Number(c.candleCount || 0),
     userReaction: c.userReaction || null,
-    userCandleLit: Boolean(c.userCandleLit),
     isWarmth: Boolean(c.isWarmth),
+    isDeleted: Boolean(c.isDeleted || c.is_deleted),
+    isOwn: Boolean(c.isOwn),
+    authorId: c.authorId || c.author_id || null,
     gifUrl: c.gifUrl || c.gif_url || null,
     replies: []
   }));
@@ -100,7 +103,7 @@ function buildCommentTree(comments) {
   return roots;
 }
 
-export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, onToast }) {
+export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, onToast, onCommentDeleted }) {
   const [commentsList, setCommentsList] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState(null); // { id, text, author }
@@ -110,6 +113,9 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, on
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTab, setPickerTab] = useState('emoji');
   const [activeReactionMenuId, setActiveReactionMenuId] = useState(null);
+  const [activeOptionsMenuId, setActiveOptionsMenuId] = useState(null);
+  const [confirmDeleteComment, setConfirmDeleteComment] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [collapsedThreads, setCollapsedThreads] = useState(new Set());
   const [focusedThreadRootId, setFocusedThreadRootId] = useState(null);
   const [shareModalComment, setShareModalComment] = useState(null);
@@ -117,8 +123,48 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, on
   const [highlightedCommentId, setHighlightedCommentId] = useState(null);
   const [burstCommentId, setBurstCommentId] = useState(null);
 
+  const [authoredCommentIds, setAuthoredCommentIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem('echoes_my_authored_comments');
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const markCommentAuthored = (id) => {
+    setAuthoredCommentIds((prev) => {
+      const next = new Set(prev);
+      next.add(String(id));
+      try {
+        localStorage.setItem('echoes_my_authored_comments', JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+  };
+
   const inputRef = useRef(null);
   const drawerListRef = useRef(null);
+  const longPressTimerRef = useRef(null);
+
+  // Re-fetch comments with server authentication and sorting
+  const refreshComments = useCallback(async () => {
+    if (!echo?.id) return;
+    try {
+      const res = await fetchCommentsForEcho(echo.id, sortBy);
+      if (res && res.data) {
+        setCommentsList(res.data);
+      }
+    } catch (err) {
+      console.warn('Could not refresh reflections:', err);
+    }
+  }, [echo?.id, sortBy]);
+
+  useEffect(() => {
+    if (isOpen && echo?.id) {
+      refreshComments();
+    }
+  }, [isOpen, echo?.id, sortBy, refreshComments]);
 
   // Sync initial comments from props
   useEffect(() => {
@@ -269,45 +315,81 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, on
     }
   };
 
-  // Light a candle for a comment
-  const handleToggleCandle = async (commentId) => {
+  // Delete a reflection owned by current user
+  const executeDeleteComment = async (commentToDelete) => {
+    if (!commentToDelete || !commentToDelete.id) return;
+    setIsDeleting(true);
+
+    const targetId = String(commentToDelete.id || commentToDelete.time);
+    const hasChildReplies = commentsList.some((c) => String(c.parentId || c.parent_id) === targetId);
+
     // Optimistic update
-    setCommentsList((prev) =>
-      prev.map((c) => {
-        if (String(c.id || c.time) === String(commentId)) {
-          const currentlyLit = Boolean(c.userCandleLit);
-          const nextCount = currentlyLit ? Math.max(0, (c.candleCount || 0) - 1) : (c.candleCount || 0) + 1;
-          return {
-            ...c,
-            userCandleLit: !currentlyLit,
-            candleCount: nextCount
-          };
-        }
-        return c;
-      })
-    );
+    if (hasChildReplies) {
+      setCommentsList((prev) =>
+        prev.map((c) => {
+          if (String(c.id || c.time) === targetId) {
+            return {
+              ...c,
+              text: '[This reflection was deleted by its author.]',
+              isDeleted: true,
+              isOwn: false,
+              authorId: null,
+              gifUrl: null,
+              reactionsCount: 0,
+              reactionBreakdown: {},
+              userReaction: null
+            };
+          }
+          return c;
+        })
+      );
+    } else {
+      setCommentsList((prev) => prev.filter((c) => String(c.id || c.time) !== targetId));
+    }
 
     try {
-      const res = await toggleCommentCandleInDb(commentId);
-      if (res?.success && res.data) {
-        setCommentsList((prev) =>
-          prev.map((c) => {
-            if (String(c.id || c.time) === String(commentId)) {
-              return {
-                ...c,
-                userCandleLit: res.data.candleLit,
-                candleCount: res.data.candleCount
-              };
-            }
-            return c;
-          })
-        );
-        if (res.data.candleLit) {
-          onToast?.('A gentle amber candle has been lit for this reflection. 🕯️');
+      const res = await deleteCommentInDb(commentToDelete.id);
+      if (!res.success) {
+        if (res.status === 403) {
+          onToast?.('Forbidden: You can only delete reflections you personally created.');
+        } else {
+          onToast?.(res.error || 'Failed to delete reflection.');
         }
+        refreshComments();
+      } else {
+        onToast?.('Your reflection has been released.');
+        if (onCommentDeleted) onCommentDeleted(echo.id, commentToDelete.id);
       }
-    } catch {
-      // rollback
+    } catch (err) {
+      console.error('Delete reflection error:', err);
+      refreshComments();
+    } finally {
+      setIsDeleting(false);
+      setConfirmDeleteComment(null);
+    }
+  };
+
+  // Mobile long-press detection for own reflections
+  const handleTouchStart = (item, isOwn) => {
+    if (!isOwn || item.isDeleted) return;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      setConfirmDeleteComment(item);
+    }, 550);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  // Desktop right-click context menu for own reflections
+  const handleContextMenu = (e, item, isOwn) => {
+    if (isOwn && !item.isDeleted) {
+      e.preventDefault();
+      setConfirmDeleteComment(item);
     }
   };
 
@@ -326,8 +408,9 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, on
         parentId,
         isWarmth: true,
         reactionsCount: 0,
-        candleCount: 0
+        isOwn: true
       };
+      markCommentAuthored(newComment.id);
 
       setCommentsList((prev) => [...prev, newComment]);
       if (onAddComment) onAddComment(echo.id, warmthText, parentId, null, true);
@@ -385,8 +468,9 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, on
         parentId,
         gifUrl: attachedGif,
         reactionsCount: 0,
-        candleCount: 0
+        isOwn: true
       };
+      markCommentAuthored(newComment.id);
 
       setCommentsList((prev) => [...prev, newComment]);
       if (onAddComment) onAddComment(echo.id, trimmed, parentId, attachedGif, false);
@@ -429,6 +513,13 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, on
     // Active reaction icon
     const activeReactionDef = EMOTIONAL_REACTIONS.find((r) => r.id === item.userReaction);
 
+    const currentAnonId = getAnonymousIdentity()?.identityId;
+    const isOwn = !item.isDeleted && (
+      Boolean(item.isOwn) ||
+      (currentAnonId && (item.authorId === currentAnonId || item.author_id === currentAnonId)) ||
+      authoredCommentIds.has(String(item.id))
+    );
+
     return (
       <div
         id={`comment-${item.id}`}
@@ -437,141 +528,180 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, on
           isHighlighted ? 'comment-shared-highlight' : ''
         }`}
       >
-        <div
-          className={`comment-bubble ${isReply ? 'comment-bubble-reply' : ''} ${
-            item.isWarmth ? 'comment-bubble-warmth' : ''
-          }`}
-        >
-          {/* Top Row: Author & Time */}
-          <div className="comment-top">
-            <div className="comment-author">
-              {isReply && <span className="reply-indicator-arrow">↳</span>}
-              <div className="avatar-placeholder">
-                <User size={12} />
-              </div>
+        {item.isDeleted ? (
+          <div className="comment-bubble comment-bubble-deleted">
+            <div className="comment-author muted-author">
               <span className="comment-author-name">Stranger</span>
-              {item.isWarmth && <span className="warmth-badge">✨ Gentle Warmth</span>}
               <span className="comment-author-sep">&middot;</span>
               <span className="comment-time">{formatTime(item.time || item.timestamp)}</span>
             </div>
-
-            {/* Quick Actions Menu (Share & Report) */}
-            <div className="comment-top-actions">
-              <button
-                type="button"
-                className="comment-top-icon-btn"
-                onClick={() => setShareModalComment(item)}
-                title="Share this reflection"
-                aria-label="Share this reflection"
-              >
-                <Share2 size={13} />
-              </button>
-              <button
-                type="button"
-                className="comment-top-icon-btn report-btn"
-                onClick={() => setReportModalComment(item)}
-                title="Report reflection to guardians"
-                aria-label="Report reflection"
-              >
-                <Flag size={12} />
-              </button>
-            </div>
+            <p className="comment-deleted-text">[This reflection was deleted by its author.]</p>
           </div>
+        ) : (
+          <div
+            className={`comment-bubble ${isReply ? 'comment-bubble-reply' : ''} ${
+              item.isWarmth ? 'comment-bubble-warmth' : ''
+            } ${isOwn ? 'comment-bubble-own' : ''}`}
+            onContextMenu={(e) => handleContextMenu(e, item, isOwn)}
+            onTouchStart={() => handleTouchStart(item, isOwn)}
+            onTouchEnd={handleTouchEnd}
+            onTouchMove={handleTouchEnd}
+          >
+            {/* Top Row: Author, Time & Options */}
+            <div className="comment-top">
+              <div className="comment-author">
+                {isReply && <span className="reply-indicator-arrow">↳</span>}
+                <div className="avatar-placeholder">
+                  <User size={12} />
+                </div>
+                <span className="comment-author-name">Stranger</span>
+                {isOwn && <span className="own-reflection-badge">You</span>}
+                {item.isWarmth && <span className="warmth-badge">✨ Gentle Warmth</span>}
+                <span className="comment-author-sep">&middot;</span>
+                <span className="comment-time">{formatTime(item.time || item.timestamp)}</span>
+              </div>
 
-          {/* Comment Body */}
-          {item.text && <p className="comment-body">{item.text}</p>}
+              {/* Quick Actions Menu (Share, Report, Options for Own) */}
+              <div className="comment-top-actions">
+                <button
+                  type="button"
+                  className="comment-top-icon-btn"
+                  onClick={() => setShareModalComment(item)}
+                  title="Share this reflection"
+                  aria-label="Share this reflection"
+                >
+                  <Share2 size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="comment-top-icon-btn report-btn"
+                  onClick={() => setReportModalComment(item)}
+                  title="Report reflection to guardians"
+                  aria-label="Report reflection"
+                >
+                  <Flag size={12} />
+                </button>
 
-          {/* Attached GIF preview */}
-          {item.gifUrl && (
-            <div className="comment-attached-gif-view">
-              <img src={item.gifUrl} alt="Reflection GIF" loading="lazy" className="comment-gif-img" />
+                {/* Own Reflection Options (Three dots) */}
+                {isOwn && (
+                  <div className="comment-options-wrapper">
+                    <button
+                      type="button"
+                      className="comment-top-icon-btn comment-options-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveOptionsMenuId(activeOptionsMenuId === item.id ? null : item.id);
+                      }}
+                      title="Reflection options"
+                      aria-label="Reflection options"
+                    >
+                      <MoreHorizontal size={13} />
+                    </button>
+                    {activeOptionsMenuId === item.id && (
+                      <div
+                        className="comment-options-dropdown"
+                        onMouseLeave={() => setActiveOptionsMenuId(null)}
+                      >
+                        <button
+                          type="button"
+                          className="comment-options-item delete-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveOptionsMenuId(null);
+                            setConfirmDeleteComment(item);
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          <span>Delete reflection</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
 
-          {/* Actions Bar: Reaction Pill, Candle, Reply */}
-          <div className="comment-actions-bar">
-            {/* Heart / Emotion Reaction Pill */}
-            <div className="reaction-wrapper">
+            {/* Comment Body */}
+            {item.text && <p className="comment-body">{item.text}</p>}
+
+            {/* Attached GIF preview */}
+            {item.gifUrl && (
+              <div className="comment-attached-gif-view">
+                <img src={item.gifUrl} alt="Reflection GIF" loading="lazy" className="comment-gif-img" />
+              </div>
+            )}
+
+            {/* Actions Bar: Reaction Pill, Reply, Focus (Candle removed) */}
+            <div className="comment-actions-bar">
+              {/* Heart / Emotion Reaction Pill */}
+              <div className="reaction-wrapper">
+                <button
+                  type="button"
+                  className={`comment-reaction-btn ${item.userReaction ? 'reacted' : ''} ${
+                    isBursting ? 'heart-burst-animate' : ''
+                  }`}
+                  onClick={() => handleReaction(item.id, item.userReaction ? item.userReaction : 'heart')}
+                  onMouseEnter={() => setActiveReactionMenuId(item.id)}
+                  title="Appreciate this reflection"
+                  aria-label="React to reflection"
+                >
+                  <span className="reaction-btn-icon">
+                    {activeReactionDef ? activeReactionDef.emoji : <Heart size={13} />}
+                  </span>
+                  <span className="reaction-count-text">
+                    {item.reactionsCount > 0 ? item.reactionsCount : 'Heart'}
+                  </span>
+                </button>
+
+                {/* Hover / Click Emotional Reaction Selector */}
+                {activeReactionMenuId === item.id && (
+                  <div
+                    className="emotional-reaction-popover"
+                    onMouseLeave={() => setActiveReactionMenuId(null)}
+                  >
+                    {EMOTIONAL_REACTIONS.map((rx) => (
+                      <button
+                        key={rx.id}
+                        type="button"
+                        className={`emotion-select-pill ${item.userReaction === rx.id ? 'active' : ''}`}
+                        onClick={() => handleReaction(item.id, rx.id)}
+                        title={`${rx.label} — "${rx.desc}"`}
+                      >
+                        <span className="emotion-emoji">{rx.emoji}</span>
+                        <span className="emotion-tooltip">{rx.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Reply Button */}
               <button
                 type="button"
-                className={`comment-reaction-btn ${item.userReaction ? 'reacted' : ''} ${
-                  isBursting ? 'heart-burst-animate' : ''
-                }`}
-                onClick={() => handleReaction(item.id, item.userReaction ? item.userReaction : 'heart')}
-                onMouseEnter={() => setActiveReactionMenuId(item.id)}
-                title="Appreciate this reflection"
-                aria-label="React to reflection"
+                className="comment-reply-action-btn"
+                onClick={() => handleStartReply(item)}
+                title="Reply to this stranger"
+                aria-label="Reply to stranger"
               >
-                <span className="reaction-btn-icon">
-                  {activeReactionDef ? activeReactionDef.emoji : <Heart size={13} />}
-                </span>
-                <span className="reaction-count-text">
-                  {item.reactionsCount > 0 ? item.reactionsCount : 'Heart'}
-                </span>
+                <CornerDownRight size={12} />
+                <span>Reply</span>
               </button>
 
-              {/* Hover / Click Emotional Reaction Selector */}
-              {activeReactionMenuId === item.id && (
-                <div
-                  className="emotional-reaction-popover"
-                  onMouseLeave={() => setActiveReactionMenuId(null)}
+              {/* Focus Thread View (for root comments with replies) */}
+              {!isReply && hasReplies && (
+                <button
+                  type="button"
+                  className="comment-focus-thread-btn"
+                  onClick={() => setFocusedThreadRootId(focusedThreadRootId === item.id ? null : item.id)}
+                  title="Focus conversation thread"
                 >
-                  {EMOTIONAL_REACTIONS.map((rx) => (
-                    <button
-                      key={rx.id}
-                      type="button"
-                      className={`emotion-select-pill ${item.userReaction === rx.id ? 'active' : ''}`}
-                      onClick={() => handleReaction(item.id, rx.id)}
-                      title={`${rx.label} — "${rx.desc}"`}
-                    >
-                      <span className="emotion-emoji">{rx.emoji}</span>
-                      <span className="emotion-tooltip">{rx.label}</span>
-                    </button>
-                  ))}
-                </div>
+                  <Sparkles size={11} />
+                  <span>Focus</span>
+                </button>
               )}
             </div>
-
-            {/* Candle Lighting Button */}
-            <button
-              type="button"
-              className={`comment-candle-btn ${item.userCandleLit ? 'candle-lit' : ''}`}
-              onClick={() => handleToggleCandle(item.id)}
-              title={item.userCandleLit ? 'Candle lit for this stranger' : 'Light a candle for this reflection'}
-              aria-label="Light a candle"
-            >
-              <span className="candle-icon">🕯️</span>
-              <span className="candle-count-text">
-                {item.candleCount > 0 ? item.candleCount : 'Candle'}
-              </span>
-            </button>
-
-            {/* Reply Button */}
-            <button
-              type="button"
-              className="comment-reply-action-btn"
-              onClick={() => handleStartReply(item)}
-              title="Reply to this stranger"
-              aria-label="Reply to stranger"
-            >
-              <CornerDownRight size={12} />
-              <span>Reply</span>
-            </button>
-
-            {/* Focus Thread View (for root comments with replies) */}
-            {!isReply && hasReplies && (
-              <button
-                type="button"
-                className="comment-focus-thread-btn"
-                onClick={() => setFocusedThreadRootId(focusedThreadRootId === item.id ? null : item.id)}
-                title="Focus conversation thread"
-              >
-                <Sparkles size={11} />
-                <span>Focus</span>
-              </button>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Thread Collapse / Expand Control */}
         {hasReplies && (
@@ -874,6 +1004,42 @@ export default function CommentsDrawer({ isOpen, echo, onClose, onAddComment, on
           onSubmitReport={handleReportCommentSubmit}
           onToast={onToast}
         />
+      )}
+
+      {/* Delete Reflection Confirmation Modal */}
+      {Boolean(confirmDeleteComment) && (
+        <div
+          className="comment-delete-modal-overlay"
+          onClick={() => !isDeleting && setConfirmDeleteComment(null)}
+        >
+          <div className="comment-delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="comment-delete-modal-icon">
+              <Trash2 size={24} />
+            </div>
+            <h4 className="comment-delete-modal-title">Delete this reflection?</h4>
+            <p className="comment-delete-modal-desc">
+              This reflection will be removed. This action cannot be undone.
+            </p>
+            <div className="comment-delete-modal-actions">
+              <button
+                type="button"
+                className="comment-delete-btn-cancel"
+                onClick={() => setConfirmDeleteComment(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="comment-delete-btn-confirm"
+                onClick={() => executeDeleteComment(confirmDeleteComment)}
+                disabled={isDeleting}
+              >
+                {isDeleting ? <Loader2 size={15} className="animate-spin" /> : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

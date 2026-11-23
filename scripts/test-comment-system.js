@@ -126,7 +126,7 @@ server.listen(PORT, async () => {
           warmthPillsCount: warmthPills.length,
           hasSortSelect: !!sortSelect,
           reactionBtnsCount: reactionBtns.length,
-          candleBtnsCount: candleBtns.length,
+          candleBtnsCount: candleBtns.length, // Should be 0
           replyBtnsCount: replyBtns.length,
           hasComposer: !!composer
         };
@@ -149,15 +149,6 @@ server.listen(PORT, async () => {
       expression: `(() => {
         const rxBtn = document.querySelector('.comment-reaction-btn');
         if (rxBtn) rxBtn.click();
-      })()`
-    });
-    await new Promise(r => setTimeout(r, 600));
-
-    // Test Candle Lighting
-    await sendCommand('Runtime.evaluate', {
-      expression: `(() => {
-        const candleBtn = document.querySelector('.comment-candle-btn');
-        if (candleBtn) candleBtn.click();
       })()`
     });
     await new Promise(r => setTimeout(r, 600));

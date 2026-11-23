@@ -142,9 +142,6 @@ export async function initDatabase() {
       if (!existingCols.has('gif_url')) {
         await pool.query('ALTER TABLE comments ADD COLUMN gif_url TEXT DEFAULT NULL');
       }
-      if (!existingCols.has('candle_count')) {
-        await pool.query('ALTER TABLE comments ADD COLUMN candle_count INT DEFAULT 0');
-      }
       if (!existingCols.has('is_reported')) {
         await pool.query('ALTER TABLE comments ADD COLUMN is_reported TINYINT(1) DEFAULT 0');
       }
@@ -157,11 +154,14 @@ export async function initDatabase() {
       if (!existingCols.has('is_warmth')) {
         await pool.query('ALTER TABLE comments ADD COLUMN is_warmth TINYINT(1) DEFAULT 0');
       }
+      if (!existingCols.has('is_deleted')) {
+        await pool.query('ALTER TABLE comments ADD COLUMN is_deleted TINYINT(1) DEFAULT 0');
+      }
     } catch (migrErr) {
       console.warn('Comments columns migration notice:', migrErr.message);
     }
 
-    // 10. Create Comment Reactions, Candles, and Reports Tables
+    // 10. Create Comment Reactions and Reports Tables (Candle feature completely removed)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comment_reactions (
         id VARCHAR(64) PRIMARY KEY,
@@ -172,18 +172,6 @@ export async function initDatabase() {
         UNIQUE KEY uq_comment_identity (comment_id, identity_id),
         INDEX idx_comm_rx_comment (comment_id),
         INDEX idx_comm_rx_identity (identity_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS comment_candles (
-        id VARCHAR(64) PRIMARY KEY,
-        comment_id VARCHAR(64) NOT NULL,
-        identity_id VARCHAR(64) NOT NULL,
-        created_at BIGINT NOT NULL,
-        UNIQUE KEY uq_comment_candle (comment_id, identity_id),
-        INDEX idx_comm_candle_comment (comment_id),
-        INDEX idx_comm_candle_identity (identity_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
@@ -466,8 +454,8 @@ export async function getAllEchoes({ category = 'all', search = '', sortBy = 'ne
   const [allComments] = await pool.query(`
     SELECT 
       c.id, c.echo_id, c.text, c.timestamp as time, c.parent_id as parentId,
-      c.gif_url as gifUrl, c.candle_count as candleCount, c.is_warmth as isWarmth,
-      c.author_id as authorId
+      c.gif_url as gifUrl, c.is_warmth as isWarmth,
+      c.author_id as authorId, COALESCE(c.is_deleted, 0) as isDeleted
     FROM comments c
     WHERE c.is_hidden = 0
     ORDER BY c.timestamp ASC
@@ -498,12 +486,11 @@ export async function getAllEchoes({ category = 'all', search = '', sortBy = 'ne
       time: Number(c.time),
       parentId: c.parentId || null,
       gifUrl: c.gifUrl || null,
-      candleCount: Number(c.candleCount || 0),
       isWarmth: Boolean(c.isWarmth),
+      isDeleted: Boolean(c.isDeleted),
       reactionsCount: rx.total,
       reactionBreakdown: rx.breakdown,
-      userReaction: null,
-      userCandleLit: false
+      userReaction: null
     });
   }
 
@@ -534,8 +521,8 @@ export async function getEchoById(id) {
   const [comments] = await pool.query(`
     SELECT 
       c.id, c.echo_id, c.text, c.timestamp as time, c.parent_id as parentId,
-      c.gif_url as gifUrl, c.candle_count as candleCount, c.is_warmth as isWarmth,
-      c.author_id as authorId
+      c.gif_url as gifUrl, c.is_warmth as isWarmth,
+      c.author_id as authorId, COALESCE(c.is_deleted, 0) as isDeleted
     FROM comments c
     WHERE c.echo_id = ? AND c.is_hidden = 0
     ORDER BY c.timestamp ASC
@@ -567,12 +554,11 @@ export async function getEchoById(id) {
       time: Number(c.time),
       parentId: c.parentId || null,
       gifUrl: c.gifUrl || null,
-      candleCount: Number(c.candleCount || 0),
       isWarmth: Boolean(c.isWarmth),
+      isDeleted: Boolean(c.isDeleted),
       reactionsCount: rx.total,
       reactionBreakdown: rx.breakdown,
-      userReaction: null,
-      userCandleLit: false
+      userReaction: null
     };
   });
 
@@ -700,21 +686,20 @@ export async function addComment(echoId, text, authorId = null, parentId = null,
     parentId: parentId || null,
     gifUrl: gifUrl || null,
     isWarmth: Boolean(isWarmth),
-    candleCount: 0,
+    isDeleted: false,
     reactionsCount: 0,
     reactionBreakdown: {},
-    userReaction: null,
-    userCandleLit: false
+    userReaction: null
   };
 }
 
 /**
- * Toggle an emotional reaction on a comment (Heart, Hug, Moved, Hope, Candle, Peace, Powerful, Gratitude)
+ * Toggle an emotional reaction on a comment (Heart, Hug, Moved, Hope, Peace, Powerful, Gratitude)
  * One reaction per anonymous identity per comment.
  */
 export async function toggleCommentReaction(commentId, identityId, reactionType = 'heart') {
   if (!commentId || !identityId) throw new Error('Missing comment ID or identity ID');
-  const validReactions = ['heart', 'hug', 'moved', 'hope', 'candle', 'peace', 'powerful', 'gratitude'];
+  const validReactions = ['heart', 'hug', 'moved', 'hope', 'peace', 'powerful', 'gratitude'];
   const rx = validReactions.includes(reactionType) ? reactionType : 'heart';
 
   const [existing] = await pool.query(
@@ -763,7 +748,6 @@ export async function toggleCommentReaction(commentId, identityId, reactionType 
             hug: '🫂',
             moved: '🥺',
             hope: '✨',
-            candle: '🕯️',
             peace: '🤍',
             powerful: '🔥',
             gratitude: '🙏'
@@ -805,61 +789,47 @@ export async function toggleCommentReaction(commentId, identityId, reactionType 
 }
 
 /**
- * Toggle lighting a virtual candle for a comment
- * One candle per anonymous identity per comment.
+ * Delete a reflection (comment) or reply by its author (with strict ownership check)
+ * If the comment has replies, tombstones it so thread structure is preserved.
+ * If leaf comment, permanently deletes it and decrements echo comment count.
  */
-export async function toggleCommentCandle(commentId, identityId) {
-  if (!commentId || !identityId) throw new Error('Missing comment ID or identity ID');
-
-  const [existing] = await pool.query(
-    'SELECT id FROM comment_candles WHERE comment_id = ? AND identity_id = ?',
-    [commentId, identityId]
-  );
-
-  let candleLit = false;
-  if (existing.length > 0) {
-    await pool.query('DELETE FROM comment_candles WHERE id = ?', [existing[0].id]);
-    await pool.query('UPDATE comments SET candle_count = GREATEST(0, candle_count - 1) WHERE id = ?', [commentId]);
-    candleLit = false;
-  } else {
-    const newId = `ccandle-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    await pool.query(
-      'INSERT INTO comment_candles (id, comment_id, identity_id, created_at) VALUES (?, ?, ?, ?)',
-      [newId, commentId, identityId, Date.now()]
-    );
-    await pool.query('UPDATE comments SET candle_count = candle_count + 1 WHERE id = ?', [commentId]);
-    candleLit = true;
-
-    // Trigger notification
-    try {
-      const [commRows] = await pool.query('SELECT author_id, echo_id, text FROM comments WHERE id = ?', [commentId]);
-      if (commRows.length > 0) {
-        const commAuthor = commRows[0].author_id;
-        const echoId = commRows[0].echo_id;
-        if (commAuthor && commAuthor !== identityId) {
-          await createNotification(
-            commAuthor,
-            identityId,
-            'comment_candle',
-            echoId,
-            commentId,
-            `Lit a candle 🕯️ for your words: "${(commRows[0].text || '').slice(0, 80)}"`
-          );
-        }
-      }
-    } catch (notifErr) {
-      console.warn('Candle notification failed:', notifErr.message);
-    }
+export async function deleteCommentByOwner(identityId, commentId) {
+  if (!identityId || !commentId) {
+    return { success: false, error: 'Identity and comment ID are required' };
   }
 
-  const [countRow] = await pool.query('SELECT candle_count FROM comments WHERE id = ?', [commentId]);
-  const candleCount = Number(countRow[0]?.candle_count || 0);
+  const [existing] = await pool.query('SELECT id, echo_id, author_id, parent_id, is_deleted FROM comments WHERE id = ?', [commentId]);
+  if (!existing || existing.length === 0) {
+    return { success: false, notFound: true, error: 'Reflection not found' };
+  }
 
-  return {
-    success: true,
-    candleLit,
-    candleCount
-  };
+  const comment = existing[0];
+  if (!comment.author_id || comment.author_id !== identityId) {
+    return { success: false, unauthorized: true, error: 'Forbidden: You can only delete reflections you personally created' };
+  }
+
+  // Check if comment has any replies
+  const [replies] = await pool.query('SELECT id FROM comments WHERE parent_id = ?', [commentId]);
+  const hasReplies = replies && replies.length > 0;
+
+  // Clean up reactions, reports, and notifications for this comment
+  await pool.query('DELETE FROM comment_reactions WHERE comment_id = ?', [commentId]).catch(() => {});
+  await pool.query('DELETE FROM comment_reports WHERE comment_id = ?', [commentId]).catch(() => {});
+  await pool.query('DELETE FROM notifications WHERE comment_id = ?', [commentId]).catch(() => {});
+
+  if (hasReplies) {
+    // Tombstone comment to preserve conversation nesting for child replies
+    await pool.query(
+      'UPDATE comments SET text = ?, gif_url = NULL, author_id = NULL, is_deleted = 1, is_warmth = 0 WHERE id = ?',
+      ['[This reflection was deleted by its author.]', commentId]
+    );
+    return { success: true, id: commentId, tombstoned: true, echoId: comment.echo_id };
+  } else {
+    // Leaf comment: delete completely
+    await pool.query('DELETE FROM comments WHERE id = ?', [commentId]);
+    await pool.query('UPDATE echoes SET comments_count = GREATEST(0, comments_count - 1) WHERE id = ?', [comment.echo_id]).catch(() => {});
+    return { success: true, id: commentId, tombstoned: false, echoId: comment.echo_id };
+  }
 }
 
 /**
@@ -886,8 +856,8 @@ export async function getCommentsForEcho(echoId, sortBy = 'relevance', identityI
   const [comments] = await pool.query(`
     SELECT 
       c.id, c.echo_id, c.text, c.timestamp as time, c.parent_id as parentId,
-      c.gif_url as gifUrl, c.candle_count as candleCount, c.is_warmth as isWarmth,
-      c.author_id as authorId
+      c.gif_url as gifUrl, c.is_warmth as isWarmth,
+      c.author_id as authorId, COALESCE(c.is_deleted, 0) as isDeleted
     FROM comments c
     WHERE c.echo_id = ? AND c.is_hidden = 0
     ORDER BY c.timestamp ASC
@@ -912,9 +882,8 @@ export async function getCommentsForEcho(echoId, sortBy = 'relevance', identityI
     reactionMap[r.comment_id].total += Number(r.count);
   }
 
-  // Fetch user reactions & candles if identityId provided
+  // Fetch user reactions if identityId provided
   let userReactionsMap = {};
-  let userCandlesSet = new Set();
   if (identityId) {
     const [userReactions] = await pool.query(`
       SELECT comment_id, reaction_type FROM comment_reactions WHERE identity_id = ? AND comment_id IN (?)
@@ -922,31 +891,24 @@ export async function getCommentsForEcho(echoId, sortBy = 'relevance', identityI
     for (const ur of userReactions) {
       userReactionsMap[ur.comment_id] = ur.reaction_type;
     }
-
-    const [userCandles] = await pool.query(`
-      SELECT comment_id FROM comment_candles WHERE identity_id = ? AND comment_id IN (?)
-    `, [identityId, commentIds]).catch(() => [[]]);
-    for (const uc of userCandles) {
-      userCandlesSet.add(uc.comment_id);
-    }
   }
 
   const enriched = comments.map(c => {
     const rx = reactionMap[c.id] || { total: 0, breakdown: {} };
+    const isDel = Boolean(c.isDeleted);
     return {
       id: c.id,
       echo_id: c.echo_id,
-      text: c.text,
+      text: isDel ? '[This reflection was deleted by its author.]' : c.text,
       time: Number(c.time),
       parentId: c.parentId || null,
-      gifUrl: c.gifUrl || null,
-      isWarmth: Boolean(c.isWarmth),
-      candleCount: Number(c.candleCount || 0),
-      reactionsCount: rx.total,
-      reactionBreakdown: rx.breakdown,
-      userReaction: userReactionsMap[c.id] || null,
-      userCandleLit: userCandlesSet.has(c.id),
-      isOwn: identityId ? (c.authorId === identityId) : false
+      gifUrl: isDel ? null : (c.gifUrl || null),
+      isWarmth: isDel ? false : Boolean(c.isWarmth),
+      isDeleted: isDel,
+      reactionsCount: isDel ? 0 : rx.total,
+      reactionBreakdown: isDel ? {} : rx.breakdown,
+      userReaction: isDel ? null : (userReactionsMap[c.id] || null),
+      isOwn: isDel ? false : (identityId ? (c.authorId === identityId) : false)
     };
   });
 
@@ -956,12 +918,12 @@ export async function getCommentsForEcho(echoId, sortBy = 'relevance', identityI
   } else if (sortBy === 'oldest') {
     enriched.sort((a, b) => a.time - b.time);
   } else if (sortBy === 'loved') {
-    enriched.sort((a, b) => (b.reactionsCount + b.candleCount) - (a.reactionsCount + a.candleCount) || b.time - a.time);
+    enriched.sort((a, b) => b.reactionsCount - a.reactionsCount || b.time - a.time);
   } else {
     // 'relevance' (default)
     enriched.sort((a, b) => {
-      const scoreA = (a.candleCount * 3) + (a.reactionsCount * 2) + (a.isWarmth ? 1 : 0);
-      const scoreB = (b.candleCount * 3) + (b.reactionsCount * 2) + (b.isWarmth ? 1 : 0);
+      const scoreA = (a.reactionsCount * 2) + (a.isWarmth ? 1 : 0);
+      const scoreB = (b.reactionsCount * 2) + (b.isWarmth ? 1 : 0);
       return scoreB - scoreA || a.time - b.time;
     });
   }
@@ -975,7 +937,7 @@ export async function getCommentsForEcho(echoId, sortBy = 'relevance', identityI
 export async function getAdminCommentsWithReports(filter = 'all') {
   let sql = `
     SELECT c.id, c.echo_id, c.text, c.timestamp, c.author_id, c.parent_id,
-           c.gif_url, c.candle_count, c.is_reported, c.report_count, c.is_hidden, c.is_warmth,
+           c.gif_url, c.is_reported, c.report_count, c.is_hidden, c.is_warmth,
            e.message as echoSnippet, e.name as echoName
     FROM comments c
     LEFT JOIN echoes e ON c.echo_id = e.id
@@ -1015,7 +977,6 @@ export async function getAdminCommentsWithReports(filter = 'all') {
     text: c.text,
     timestamp: Number(c.timestamp),
     gifUrl: c.gif_url || null,
-    candleCount: Number(c.candle_count || 0),
     isReported: Boolean(c.is_reported),
     reportCount: Number(c.report_count || 0),
     isHidden: Boolean(c.is_hidden),
@@ -1163,7 +1124,7 @@ export async function getAdminOverview() {
 
   // Fetch recent 50 comments with echo snippet and report status
   const [recentComments] = await pool.query(`
-    SELECT c.id, c.echo_id, c.text, c.timestamp, c.gif_url, c.candle_count, c.is_reported, c.report_count, c.is_hidden, c.is_warmth, e.message as echoSnippet, e.name as echoName
+    SELECT c.id, c.echo_id, c.text, c.timestamp, c.gif_url, c.is_reported, c.report_count, c.is_hidden, c.is_warmth, e.message as echoSnippet, e.name as echoName
     FROM comments c
     LEFT JOIN echoes e ON c.echo_id = e.id
     ORDER BY c.timestamp DESC
@@ -1213,7 +1174,6 @@ export async function getAdminOverview() {
       text: c.text,
       timestamp: Number(c.timestamp),
       gifUrl: c.gif_url || null,
-      candleCount: Number(c.candle_count || 0),
       isReported: Boolean(c.is_reported),
       reportCount: Number(c.report_count || 0),
       isHidden: Boolean(c.is_hidden),
@@ -1298,18 +1258,16 @@ export async function dismissReport(echoId) {
 export async function deleteEchoPermanently(echoId) {
   await pool.query('DELETE FROM comment_reports WHERE echo_id = ?', [echoId]).catch(() => {});
   await pool.query('DELETE FROM comment_reactions WHERE comment_id IN (SELECT id FROM comments WHERE echo_id = ?)', [echoId]).catch(() => {});
-  await pool.query('DELETE FROM comment_candles WHERE comment_id IN (SELECT id FROM comments WHERE echo_id = ?)', [echoId]).catch(() => {});
   await pool.query('DELETE FROM echoes WHERE id = ?', [echoId]);
   await logAdminAction('delete_echo', echoId, `Whisper #${echoId} permanently erased`);
   return { success: true, id: echoId };
 }
 
 /**
- * Admin: Permanently delete a comment and cascade clean reactions, candles, and reports
+ * Admin: Permanently delete a comment and cascade clean reactions and reports
  */
 export async function deleteCommentPermanently(commentId) {
   await pool.query('DELETE FROM comment_reactions WHERE comment_id = ?', [commentId]).catch(() => {});
-  await pool.query('DELETE FROM comment_candles WHERE comment_id = ?', [commentId]).catch(() => {});
   await pool.query('DELETE FROM comment_reports WHERE comment_id = ?', [commentId]).catch(() => {});
   await pool.query('DELETE FROM comments WHERE id = ?', [commentId]);
   await logAdminAction('delete_comment', commentId, `Reflection #${commentId} removed`);
@@ -1624,13 +1582,12 @@ export async function deleteMyEchoPost(identityId, echoId) {
     return { success: false, unauthorized: true, error: 'You are not the author of this Echo' };
   }
 
-  // Delete cascaded bookmarks, comments, reports, notifications, comment reactions & candles
+  // Delete cascaded bookmarks, comments, reports, notifications, comment reactions
   await pool.query('DELETE FROM notifications WHERE echo_id = ?', [echoId]);
   await pool.query('DELETE FROM bookmarks WHERE echo_id = ?', [echoId]);
   await pool.query('DELETE FROM reports WHERE echo_id = ?', [echoId]);
   await pool.query('DELETE FROM comment_reports WHERE echo_id = ?', [echoId]).catch(() => {});
   await pool.query('DELETE FROM comment_reactions WHERE comment_id IN (SELECT id FROM comments WHERE echo_id = ?)', [echoId]).catch(() => {});
-  await pool.query('DELETE FROM comment_candles WHERE comment_id IN (SELECT id FROM comments WHERE echo_id = ?)', [echoId]).catch(() => {});
   await pool.query('DELETE FROM comments WHERE echo_id = ?', [echoId]);
   await pool.query('DELETE FROM echoes WHERE id = ? AND author_id = ?', [echoId, identityId]);
 
@@ -1736,18 +1693,7 @@ export async function getMyEchoComments(identityId, { page = 1, limit = 50 } = {
  * Delete own reflection (comment)
  */
 export async function deleteMyEchoComment(identityId, commentId) {
-  const [existing] = await pool.query('SELECT author_id FROM comments WHERE id = ?', [commentId]);
-  if (!existing || existing.length === 0) {
-    return { success: false, notFound: true, error: 'Comment not found' };
-  }
-  if (existing[0].author_id !== identityId) {
-    return { success: false, unauthorized: true, error: 'Unauthorized to delete this reflection' };
-  }
-  await pool.query('DELETE FROM comment_reactions WHERE comment_id = ?', [commentId]).catch(() => {});
-  await pool.query('DELETE FROM comment_candles WHERE comment_id = ?', [commentId]).catch(() => {});
-  await pool.query('DELETE FROM comment_reports WHERE comment_id = ?', [commentId]).catch(() => {});
-  await pool.query('DELETE FROM comments WHERE id = ? AND author_id = ?', [commentId, identityId]);
-  return { success: true, id: commentId };
+  return deleteCommentByOwner(identityId, commentId);
 }
 
 /**

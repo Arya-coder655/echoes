@@ -41,7 +41,7 @@ import {
   getMyEchoNotifications,
   markMyEchoNotificationsRead,
   toggleCommentReaction,
-  toggleCommentCandle,
+  deleteCommentByOwner,
   reportComment,
   getCommentsForEcho,
   getAdminCommentsWithReports,
@@ -499,7 +499,7 @@ app.post('/api/echoes/:id/comments', commentRateLimiter, async (req, res) => {
 });
 
 /**
- * Toggle emotional reaction on a comment (Heart, Hug, Moved, Hope, Candle, Peace, Powerful, Gratitude)
+ * Toggle emotional reaction on a comment (Heart, Hug, Moved, Hope, Peace, Powerful, Gratitude)
  */
 app.post('/api/comments/:id/reactions', async (req, res) => {
   try {
@@ -527,28 +527,36 @@ app.post('/api/comments/:id/reactions', async (req, res) => {
 });
 
 /**
- * Toggle lighting a virtual candle on a comment
+ * Delete a reflection or reply (strictly authorized for author only)
+ * Returns 403 Forbidden if not the author
  */
-app.post('/api/comments/:id/candle', async (req, res) => {
+app.delete('/api/comments/:id', async (req, res) => {
   try {
     const commentId = req.params.id;
     const identityId = req.headers['x-echo-identity-id'];
     const identitySecret = req.headers['x-echo-identity-secret'];
 
     if (!identityId || !identitySecret) {
-      return res.status(401).json({ error: 'Anonymous identity credentials required to light a candle.' });
+      return res.status(401).json({ error: 'Anonymous identity credentials required to delete this reflection.' });
     }
 
     const isValid = await verifyIdentityCredentials(identityId.toString().trim(), identitySecret.toString().trim());
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid anonymous identity secret.' });
+      return res.status(401).json({ error: 'Invalid anonymous identity credentials.' });
     }
 
-    const result = await toggleCommentCandle(commentId, identityId.toString().trim());
+    const result = await deleteCommentByOwner(identityId.toString().trim(), commentId);
+    if (result.notFound) {
+      return res.status(404).json({ error: 'Reflection not found.' });
+    }
+    if (result.unauthorized) {
+      return res.status(403).json({ error: 'Forbidden: You can only delete reflections you personally created.' });
+    }
+
     res.json(result);
   } catch (err) {
-    console.error('Error toggling comment candle:', err);
-    res.status(500).json({ error: 'Failed to light candle.' });
+    console.error('Error deleting comment:', err);
+    res.status(500).json({ error: 'Failed to delete reflection.' });
   }
 });
 

@@ -198,21 +198,26 @@ export async function toggleCommentReactionInDb(commentId, reactionType = 'heart
   }
 }
 
-export async function toggleCommentCandleInDb(commentId) {
+/**
+ * Delete own reflection / reply from an echo with strict identity authorization
+ */
+export async function deleteCommentInDb(commentId) {
   try {
     const authHeaders = getAnonymousAuthHeaders();
-    const res = await fetch(`${API_BASE}/comments/${commentId}/candle`, {
-      method: 'POST',
+    const res = await fetch(`${API_BASE}/comments/${commentId}`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         ...authHeaders
       }
     });
     const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to toggle candle');
-    return { data: json, success: true };
+    if (!res.ok) {
+      return { success: false, status: res.status, error: json.error || 'Failed to delete reflection' };
+    }
+    return { success: true, ...json };
   } catch (err) {
-    console.warn('Failed toggling candle:', err.message);
+    console.warn('Failed deleting comment:', err.message);
     return { error: err.message, success: false };
   }
 }

@@ -1026,8 +1026,6 @@ export default function MyEchoModal({
                                 <CornerDownRight size={15} className="text-amber-400" />
                               ) : notif.type === 'comment_reaction' ? (
                                 <Heart size={15} className="text-rose-400" />
-                              ) : notif.type === 'comment_candle' ? (
-                                <span className="text-xs">🕯️</span>
                               ) : notif.type === 'comment_warmth' ? (
                                 <Sparkles size={15} className="text-amber-300" />
                               ) : (
@@ -1041,8 +1039,6 @@ export default function MyEchoModal({
                                   : notif.type === 'comment_reply'
                                   ? `Stranger replied: "${notif.snippet}"`
                                   : notif.type === 'comment_reaction'
-                                  ? notif.snippet
-                                  : notif.type === 'comment_candle'
                                   ? notif.snippet
                                   : notif.type === 'comment_warmth'
                                   ? `Stranger sent warmth: "${notif.snippet}"`
